@@ -1,0 +1,6 @@
+{
+  "window_start": "2026-10-21",
+  "window_end": "2026-11-20",
+  "model": "claude-opus-5-5",
+  "webrouter_repo": "https://github.com/Nimbleway/webrouter"
+}

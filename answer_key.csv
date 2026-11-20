@@ -1,0 +1,109 @@
+company,announcement,event_date,source_url
+Airtable,"🍂 Fall Release: Omni 2.0, Airtable Canvas, a bigger MCP, agent audit logs, and upcoming agent permissions",2026-10-21,https://community.airtable.com/announcements-6/fall-release-omni-2-0-airtable-canvas-a-bigger-mcp-agent-audit-logs-and-upcoming-agent-permissions-48850
+Airtable,New feature related to Omni 2.0,2026-10-31,https://community.airtable.com/omni-88/new-feature-related-to-omni-2-0-48888
+Airtable,Airtable Canvas is now generally available!,2026-11-18,https://community.airtable.com/announcements-6/airtable-canvas-is-now-generally-available-48955
+Asana,[New] Asana CLI now available - Product Launches,2026-11-13,https://forum.asana.com/t/new-asana-cli-now-available/1161405
+Atlassian,LaunchNotes: What's new in Jira,2026-10-26,https://jirareleases.atlassian.com/announcements/custom-space-templates-now-available-on-all-paid-editions
+Atlassian,Introducing the Context Quality Score (CQS): a new framework for measuring and optimizing AI context - Inside Atlassian,2026-10-29,https://www.atlassian.com/blog/context/context-quality-score
+Atlassian,"Jira's autumn 2026 release: faster views, visible agents, and consistency by default - Inside Atlassian",2026-10-30,https://www.atlassian.com/blog/development/jira-autumn-release
+Atlassian,Agentic Pipelines is generally available: run agents in Cloud or on your own Linux runners - Inside Atlassian,2026-11-02,https://www.atlassian.com/blog/bitbucket/agentic-pipelines-generally-available
+Atlassian,"Meet Code Reviewer, now available with Jira - Inside Atlassian",2026-11-13,https://www.atlassian.com/blog/development/code-reviewer
+Atlassian,Introducing the Atlassian AI SDLC Index: What the data shows about AI and real work - Inside Atlassian,2026-11-18,https://www.atlassian.com/blog/company-news/introducing-the-atlassian-ai-sdlc-index
+Canva,Introducing Canva Research,2026-10-21,https://www.canva.com/newsroom/news/introducing-canva-research/
+Canva,Introducing Canva Craft,2026-10-22,https://www.canva.com/newsroom/news/canva-craft/
+Canva,"Introducing Canva Brush, a vision-language model for design",2026-10-29,https://www.canva.com/newsroom/news/canva-brush/
+Canva,New campaign asks “What Will You Canva Today?”,2026-10-30,https://www.canva.com/newsroom/news/what-will-you-canva-today-campaign/
+Canva,"Introducing AI Controls: Your creativity, your call",2026-11-19,https://www.canva.com/newsroom/news/ai-controls-canva/
+Cloudflare,Introducing full transaction detection for Cloudflare WAF,2026-10-21,https://blog.cloudflare.com/full-transaction-waf/
+Cloudflare,Introducing the Cloudflare PHP Capture the Flag challenge,2026-10-27,https://blog.cloudflare.com/php-ctf/
+Cloudflare,Cloudflare services for private origins is now generally available,2026-10-30,https://blog.cloudflare.com/private-origins-public-to-private/
+Cloudflare,"Introducing Zero Wire, a hub for investigating critical Internet vulnerabilities",2026-11-03,https://blog.cloudflare.com/zero-wire/
+Cloudflare,"See the agents, set the terms: new visibility and control for personal agents",2026-11-04,https://blog.cloudflare.com/personal-agents-visibility-control/
+Cloudflare,Introducing Spend Management: Spending limits and alerts for Cloudflare,2026-11-13,https://blog.cloudflare.com/spend-management/
+Cloudflare,"An updated Clairic and Clairic-flash are now open-weight, from the new Workers AI Superintelligence team",2026-11-18,https://blog.cloudflare.com/open-clairic/
+Cloudflare,Cloud Connector is now generally available · Changelog,2026-11-18,https://developers.cloudflare.com/changelog/post/2026-11-18-cloud-connector-ga/
+Cloudflare,"A new, consistent language across Images interfaces · Changelog",2026-11-18,https://developers.cloudflare.com/changelog/post/2026-11-18-consistent-optimization-interfaces/
+Databricks,AI Runtime is Generally Available,2026-10-21,https://www.databricks.com/blog/ai-runtime-generally-available
+Databricks,Announcing General Availability of Real-Time Mode for Spark Declarative Pipelines on Databricks,2026-10-29,https://www.databricks.com/blog/announcing-general-availability-real-time-mode-spark-declarative-pipelines-databricks
+Databricks,Lakebase Postgres is now generally available on Google Cloud,2026-11-02,https://www.databricks.com/blog/lakebase-postgres-now-generally-available-google-cloud
+Databricks,Introducing Apache Spark® 4.3 - Now available in Databricks Runtime 19,2026-11-05,https://www.databricks.com/blog/introducing-apache-spark-43-now-available-databricks-runtime-19
+Databricks,What’s new in Databricks - October 2026 - Databricks Community - 175667,2026-11-07,https://community.databricks.com/t5/product-platform-updates/what-s-new-in-databricks-october-2026/ba-p/175667
+Databricks,Databricks Launches New Always-on Genie: Autonomous AI for Complex Enterprise Work - Databricks,2026-11-11,https://www.databricks.com/company/newsroom/press-releases/databricks-launches-new-always-genie-autonomous-ai-complex
+Databricks,Announcing GA of Genie Ontology,2026-11-11,https://www.databricks.com/blog/announcing-ga-genie-ontology
+Databricks,"Migrate Effortlessly to the Databricks Lakehouse with Genie Migrate, now Generally Available",2026-11-12,https://www.databricks.com/blog/genie-migrate-for-lakehouse-generally-available
+Databricks,The new Azure Databricks on Azure Government is now in Beta,2026-11-17,https://www.databricks.com/blog/new-azure-databricks-azure-government-now-beta
+Databricks,Introducing Genie Migrate for Serverless,2026-11-18,https://www.databricks.com/blog/introducing-genie-migrate-serverless
+Databricks,Announcement,2026-11-18,https://community.databricks.com/t5/announcements/announcement-introducing-the-databricks-ai-index-the-state-of/td-p/176799
+Databricks,Unity Gateway release notes,2026-11-18,https://docs.databricks.com/aws/en/release-notes/unity-gateway/
+Databricks,"Genie ZeroOps, now in public beta: An autonomous agent that fixes data pipelines, with lessons from 80,000 customer issues",2026-11-19,https://www.databricks.com/blog/genie-zeroops-now-public-beta-autonomous-agent-fixes-data-pipelines-lessons-80000-customer
+Datadog,Datadog is now available on Anthropic’s Claude Marketplace,2026-11-02,https://www.datadoghq.com/blog/datadog-anthropic-claude-marketplace/
+Dropbox,Dropbox Announces Plans to Acquire Tigris Data Inc. and Unveils DBX ...,2026-11-05,https://investors.dropbox.com/news-releases/news-release-details/dropbox-announces-plans-acquire-tigris-data-inc-and-unveils-dbx
+Figma,"New Figma Motion updates: physics based springs, style and Lottie export previews",2026-11-10,https://forum.figma.com/product-updates-3/new-figma-motion-updates-physics-based-springs-style-and-lottie-export-previews-59976
+Figma,How 3D Transforms and Figma’s Agent Brought a Launch Video to Life,2026-11-12,https://www.figma.com/blog/how-3d-transforms-and-figmas-agent-brought-a-launch-video-to-life/
+GitHub,"Introducing Replica, an open-source AI prototyping tool - GitHub Changelog",2026-10-28,https://github.blog/changelog/2026-10-28-introducing-replica-an-open-source-ai-prototyping-tool/
+GitHub,@GitHub in Slack and Teams is generally available and more - GitHub Changelog,2026-11-06,https://github.blog/changelog/2026-11-06-github-copilot-in-slack-and-teams-is-generally-available/
+GitHub,GitHub Copilot weekly releases — November 9 - GitHub Changelog,2026-11-16,https://github.blog/changelog/2026-11-16-github-copilot-weekly-releases-november-9/
+Grafana,What's new in Grafana v13.3,2026-10-27,https://grafana.com/docs/grafana/latest/whatsnew/whats-new-in-v13/whats-new-in-v13-3/
+Grafana,"Grafana 13.3 release: manage variables across dashboards, share findings with Notebooks, a UI refresh, and more",2026-10-29,https://grafana.com/blog/grafana-13-3-release-all-the-latest-features/
+Grafana,"What’s new with Grafana variables: less clutter, easier reuse across dashboards, and more",2026-11-05,https://grafana.com/blog/whats-new-with-grafana-variables-less-clutter-easier-reuse-across-dashboards-and-more/
+Grafana,"What's new in Pyroscope: profile more of your workflows, troubleshoot with AI agents, and more",2026-11-13,https://grafana.com/blog/whats-new-in-pyroscope-profile-more-of-your-workflows-troubleshoot-with-ai-agents-and-more/
+Grafana,Grafana Campfire 🔥 - Introduction to Grafana Notebooks - (Grafana Community Call - Nov 2026) - Grafana - Grafana Labs Community Forums,2026-11-16,https://community.grafana.com/t/grafana-campfire-introduction-to-grafana-notebooks-grafana-community-call-nov-2026/165094
+Grafana,"Bring charts, queries, and context into one shareable document: Introducing Grafana Notebooks",2026-11-19,https://grafana.com/blog/bring-charts-queries-and-context-into-one-shareable-document-introducing-grafana-notebooks/
+Intercom,Make changes to Fin with confidence using Releases,2026-11-05,https://www.intercom.com/changes/en/162600-make-changes-to-fin-with-confidence-using-releases
+Linear,Introducing Mobile Diffs,2026-11-05,https://linear.app/now/mobile-diffs
+Miro,New Cursor Chat (Beta) Feature Is Extremely Annoying,2026-11-02,https://community.miro.com/ask-the-community-45/new-cursor-chat-beta-feature-is-extremely-annoying-29515
+Miro,Does the new Talktrack keep interactive board playback? And why the switch?,2026-11-03,https://community.miro.com/ask-the-community-45/does-the-new-talktrack-keep-interactive-board-playback-and-why-the-switch-29533
+MongoDB,Introducing the MongoDB Claude SDK Session Adapter: Durable Session Storage for Agents,2026-10-27,https://www.mongodb.com/company/blog/product-release-announcements/introducing-claude-sdk-session-adapter-durable-session-storage-for-agents
+MongoDB,Introducing the MongoDB Google ADK Integration: Durable Memory for Agent State,2026-11-04,https://www.mongodb.com/company/blog/product-release-announcements/introducing-mongodb-google-adk-integration-durable-memory-agent-state
+MongoDB,Introducing the MongoDB Vercel AI SDK Integration: Persistent Memory for AI Applications,2026-11-05,https://www.mongodb.com/company/blog/product-release-announcements/introducing-mongodb-vercel-ai-sdk-integration-persistent-memory-applications
+MongoDB,New in MongoDB,2026-11-19,https://www.mongodb.com/products/updates/now-ga-opt-in-preview-private-endpoints-connection-strings-as-a-first-class-resource/
+Netlify,Agent Runners API now available in the Netlify public API,2026-11-05,https://www.netlify.com/changelog/2026-11-05-agent-runners-api/
+Netlify,Email verification now available for form notifications,2026-11-09,https://www.netlify.com/changelog/2026-11-09-email-confirmation-for-form-notifications/
+Netlify,Netlify Server is now available in Early Access,2026-11-10,https://www.netlify.com/changelog/2026-11-10-netlify-server-early-access/
+Netlify,The new Netlify experience,2026-11-18,https://www.netlify.com/changelog/2026-11-18-new-netlify-experience/
+Netlify,Introducing Organization Webhooks on Netlify,2026-11-20,https://www.netlify.com/changelog/2026-11-20-organization-webhooks/
+Notion,How Candidly uses Notion to make Cursor agents multiplayer and ship 73% more value,2026-10-21,https://www.notion.com/customers/candidly
+Okta,New Okta AI Support Agent (Beta) Available on the Okta Support Center,2026-11-02,https://support.okta.com/help/s/article/new-okta-ai-support-agent-beta-available-on-the-okta-support-center?language=en_US
+Okta,What Is New in Okta Identity Governance,2026-11-04,https://support.okta.com/help/s/article/what-s-new-in-okta-identity-governance?language=en_US
+Okta,Okta for AI Agents: GA Announcement & Product Overview,2026-11-05,https://www.okta.com/blog/ai/okta-for-ai-agents-general-availability/
+Okta,Okta Privileged Access API release notes 2026,2026-11-13,https://developer.okta.com/docs/release-notes/2026-okta-privileged-access/
+Okta,Announcing the Evaluate the Business Impact of Phishing ...,2026-11-16,https://support.okta.com/help/s/blog/a67WR00000aH7ErYAK/announcing-the-evaluate-the-business-impact-of-phishing-resistance-learning?language=en_US
+Postman,Postman release notes,2026-10-27,https://postman.com/release-notes/postman-app/v11/
+Retool,General availability of app builder,2026-10-28,https://docs.retool.com/changelog/app-builder-ga
+Retool,App testing is now in public beta! - 💥 Product Updates - Retool Forum,2026-11-03,https://community.retool.com/t/app-testing-is-now-in-public-beta/67729
+Retool,General availability of Retool's MCP server,2026-11-11,https://docs.retool.com/changelog/mcp-ga
+Retool,Runtime function approval off by default for new apps,2026-11-16,https://docs.retool.com/changelog/function-approval-off-new-apps
+Retool,Gemini 4 Carbon and Claude Opus 5 available in Retool,2026-11-17,https://docs.retool.com/changelog/2026/11/17/new-ai-models-
+Retool,Join our Beta: Packages (reusable functions across apps) - 📣 Retool Announcements - Retool Forum,2026-11-19,https://community.retool.com/t/join-our-beta-packages-reusable-functions-across-apps/67947
+Retool,Gemini 4 Hydrogen available in Retool,2026-11-19,https://docs.retool.com/changelog/gemini-4-hydrogen
+Shopify,"Introducing Shopify Protect: block fraud, not customers (2026) - Shopify",2026-10-28,https://www.shopify.com/blog/introducing-shopify-protect
+Shopify,Review store changes in the new Store activity log - Shopify Changelog,2026-11-13,https://changelog.shopify.com/posts/review-store-changes-in-the-new-store-activity-log
+Shopify,"Flow: New ""updated"" triggers for orders, customers, and more - Shopify Changelog",2026-11-20,https://changelog.shopify.com/posts/flow-new-updated-triggers-for-orders-customers-and-more
+Snowflake,"Nov 16, 2026: Create, evaluate, and optimize Cortex AI Functions with Cortex AI Function Studio (*General availability*)",2026-11-16,https://docs.snowflake.com/en/release-notes/2026/other/2026-11-16-cortex-ai-function-studio-ga
+Snowflake,What's New in CoCo Desktop: From Data Issue to Fix,2026-11-17,https://www.snowflake.com/en/blog/engineering/what-s-new-in-coco-desktop-from-finding-a-data-issue-to-shipping-the-fix/
+Snowflake,"Nov 18, 2026: Schema detection and evolution for structured types (*General availability*)",2026-11-18,https://docs.snowflake.com/en/release-notes/2026/other/2026-11-18-structured-type-inference
+Stripe,Introducing Stripe Treasury for agents,2026-10-21,https://stripe.com/newsroom/news/treasury-for-agents
+Stripe,The Latest News & Announcements,2026-10-21,https://stripe.com/nz/newsroom/news
+Stripe,Stripe Newsroom: The Latest News & Announcements,2026-11-10,https://stripe.com/newsroom/news
+Supabase,OrioleDB public beta: a Postgres storage engine for update-heavy ...,2026-10-28,https://supabase.com/blog/orioledb-public-beta
+Supabase,"Introducing DBArena: open, reproducible benchmarks for hosted ...",2026-10-30,https://supabase.com/blog/introducing-dbarena
+Twilio,Email Insights is now Generally Available,2026-11-05,https://www.twilio.com/en-us/changelog/email-insights-is-now-generally-available
+Twilio,Twilio Unveils Voice AI Capabilities for Businesses to Deploy Natural-Sounding AI Voice Agents at Scale,2026-11-17,https://www.twilio.com/en-us/press/releases/twilio-unveils-voice-ai-capabilities-for-businesses-to-deploy-na
+Twilio,New Features for Conversation Insights (Beta),2026-11-17,https://www.twilio.com/en-us/changelog/new-features-for-conversation-insights--public-beta-
+Twilio,Conversation Relay Turn Detection: New Tuning Controls,2026-11-18,https://www.twilio.com/en-us/changelog/turn-detection-for-conversation-relay--new-tuning-controls
+Twilio,"Data residency for TaskRouter, Studio, and Functions and Assets is now generally available in Ireland (IE1)",2026-11-19,https://www.twilio.com/en-us/changelog/taskrouter-studio-functions-ga-ie1
+Vercel,Introducing Geist Serif,2026-10-30,https://vercel.com/blog/introducing-geist-serif
+Vercel,Better Auth November 2026 security release,2026-11-03,https://vercel.com/ja/kb/bulletin/better-auth-november-2026-security-release
+Vercel,How Mercor ships internal apps and billions of production tokens on one platform,2026-11-03,https://vercel.com/blog/how-mercor-ships-internal-apps-and-billions-of-production-tokens-on-one-platform
+Vercel,Workflow SDK 5 is now available,2026-11-12,https://vercel.com/blog/workflow-sdk-5
+Vercel,Introducing eve 1.0,2026-11-17,https://vercel.com/blog/eve-is-now-generally-available
+Vercel,Vercel Board is now available,2026-11-18,https://vercel.com/changelog/vercel-board-is-now-available
+Vercel,Introducing Vercel Board,2026-11-18,https://vercel.com/blog/introducing-vercel-board
+Vercel,Vercel Billing CLI is now available,2026-11-19,https://vercel.com/changelog/vercel-billing-cli-is-now-available
+Vercel,GPT-Live 1.1 now available on AI Gateway,2026-11-19,https://vercel.com/changelog/gpt-live-1-1-now-available-on-ai-gateway
+Webflow,Agent presence is now available in all workspaces,2026-10-22,https://community.webflow.com/updates/post/agent-presence-is-now-available-in-all-workspaces-jMfuP1tAE180gMM
+Webflow,New modal and popover elements,2026-11-10,https://webflow.com/updates/new-modal-and-popover-elements
+Zapier,What's New: 53 updated integrations for October 2026,2026-10-28,https://community.zapier.com/product-updates/what-s-new-53-updated-integrations-for-october-2026-54031
+Zoom,Zoom Expands Zoom for Government Platform with Complete CX Suite and New Authorized Capabilities,2026-11-04,https://news.zoom.com/zoom-expands-zoom-for-government-platform-with-complete-cx-suite-and-new-authorized-capabilities/
+Zoom,Zoom's new AI Launchpad offers up to $150K in complimentary credits to build next-gen apps,2026-11-10,https://news.zoom.com/zoom-ai-launchpad/
+Zoom,"4,000 apps and counting: What's new in the Zoom Marketplace",2026-11-19,https://www.zoom.com/en/blog/zoom-marketplace-4000-apps/
