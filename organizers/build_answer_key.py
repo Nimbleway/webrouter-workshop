@@ -4,7 +4,7 @@ For organizers, not attendees. Run it the day before the workshop after updating
 window_start / window_end in config.json, then review answer_key.csv by hand:
 it is a starting point, not ground truth.
 
-Needs EXA_API_KEY. Usage: uv run build_answer_key.py
+Needs EXA_API_KEY. Usage: uv run organizers/build_answer_key.py
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent.parent
 CONFIG = json.loads((ROOT / "config.json").read_text())
 
 LAUNCH = re.compile(

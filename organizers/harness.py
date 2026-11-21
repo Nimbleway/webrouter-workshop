@@ -1,14 +1,20 @@
 """Run the launch task through Claude with one web tool or the other, and measure it.
 
-  uv run harness.py --web native      # Claude's built-in web search
-  uv run harness.py --web webrouter   # the open source WebRouter's search and extract
+  uv run organizers/harness.py --web native      # Claude's built-in web search
+  uv run organizers/harness.py --web webrouter   # the open source WebRouter's search and extract
 
 Same model, same prompt, same companies; only the web tool changes. Writes
 results/harness_<web>.csv and .metrics.json (time, tokens, web calls, cost),
-then prints the score. Needs ANTHROPIC_API_KEY.
+then prints the score. Needs ANTHROPIC_API_KEY. Optional, for organizers: a
+check of the estimates attendees get from their call logs, with exact API usage.
 """
 
 from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # repo root: common.py, score.py
 
 import argparse
 import json

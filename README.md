@@ -46,17 +46,17 @@ Then, when the speaker gets there, paste each of these in the same agent:
 | `providers.py` | One search across WebRouter's free providers, to see how much the provider alone changes the answer. |
 | `plan_demo.py` | WebRouter's plans for a few prompts, with and without a tight budget. |
 | `my_router.py` | Your routing rule (step 4). `solutions/my_router.py` has one answer. |
-| `rule_run.py` | Runs the task through a router's plan and scores it. |
-| `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools, measuring exact tokens and cost. |
-| `build_answer_key.py` | For organizers: rebuilds the draft answer key (needs `EXA_API_KEY`). |
+| `rule_run.py` | Searches the companies through a router's plan (default rules or yours) and saves the raw results and a call log; your agent turns them into a CSV to score. |
+| `organizers/harness.py` | Optional, for organizers, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools and measures exact tokens and cost, to check the estimates attendees get from their call logs. |
+| `organizers/build_answer_key.py` | For organizers: rebuilds the draft answer key (needs `EXA_API_KEY`). |
 
 ## About the answer key
 
 `answer_key.csv` was built automatically from each company's own site for the window in
 `config.json`, then filtered to launch-like titles. It misses some launches and includes a
 few non-launches, so treat "not in answer key" rows as "check by hand", not as wrong.
-Organizers: update the window in `config.json`, run `uv run build_answer_key.py` the day
-before the session, and review the file by hand.
+Organizers: update the window in `config.json`, run `uv run organizers/build_answer_key.py`
+the day before the session, and review the file by hand.
 
 ## Links
 
