@@ -10,13 +10,14 @@ You're helping in a workshop. Work through these steps without asking questions.
    If the web-router tools aren't available to you yet, tell me to restart you and paste
    "Follow router.md" again, then stop.
 2. Call web-router's `budget_start` with `max_cost_usd` 0.50 and `time_limit_s` 600.
-3. Redo the kickoff task (same companies, same window) using **only web-router's tools**
-   (`search`, `extract`), not your built-in web tools. Search and extract need no API keys.
+3. Redo the kickoff task (same shopper, same 30 wishlist items, same window) using **only
+   web-router's tools** (`search`, `extract`), not your built-in web tools. Search and extract
+   need no API keys.
 4. Log every web-router call to `results/router.calls.jsonl`, one JSON line each:
    `{"tool": "<search or extract>", "input": "<query or URLs>", "result_chars": <approximate length returned>, "cost_usd": <the cost the tool reported, or null>}`
 5. Write `results/router.csv` (same columns as `results/baseline.csv`) and
    `results/router.meta.json` (`started`, `finished`, `seconds`, `agent`), timing with `date -u +%FT%TZ`.
 6. Call `budget_status` and tell me what it reports.
 7. Run `uv run score.py results/router.csv`, then `uv run compare.py`, and show me both tables.
-8. Run `uv run providers.py Figma` and summarize in two sentences how much the provider
-   alone changed the results.
+8. Run `uv run providers.py 1` (wishlist item 1, the carry-on) and summarize in two sentences
+   how much the provider alone changed the results.

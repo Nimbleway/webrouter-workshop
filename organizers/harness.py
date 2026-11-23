@@ -1,9 +1,9 @@
-"""Run the launch task through Claude with one web tool or the other, and measure it.
+"""Run the wishlist task through Claude with one web tool or the other, and measure it.
 
   uv run organizers/harness.py --web native      # Claude's built-in web search
   uv run organizers/harness.py --web webrouter   # the open source WebRouter's search and extract
 
-Same model, same prompt, same companies; only the web tool changes. Writes
+Same model, same prompt, same wishlist; only the web tool changes. Writes
 results/harness_<web>.csv and .metrics.json (time, tokens, web calls, cost),
 then prints the score. Needs ANTHROPIC_API_KEY. Optional, for organizers: a
 check of the estimates attendees get from their call logs, with exact API usage.
@@ -23,7 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
-from common import CONFIG, NATIVE_SEARCH_USD, RESULTS, companies, llm_cost, parse_json_array, task_prompt, write_results
+from common import CONFIG, NATIVE_SEARCH_USD, RESULTS, llm_cost, parse_json_array, task_prompt, wishlist, write_results
 from score import score, show
 
 client = anthropic.Anthropic()
@@ -41,9 +41,9 @@ def ask(model: str, messages: list, tools: list) -> anthropic.types.beta.BetaMes
     )
 
 
-def run_native(company: str, model: str) -> dict:
+def run_native(item: dict, model: str) -> dict:
     tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 15}]
-    messages = [{"role": "user", "content": task_prompt(company)}]
+    messages = [{"role": "user", "content": task_prompt(item)}]
     tok_in = tok_out = searches = 0
     while True:
         r = ask(model, messages, tools)
@@ -60,9 +60,9 @@ def run_native(company: str, model: str) -> dict:
             "web_cost": searches * NATIVE_SEARCH_USD, "stop": r.stop_reason}
 
 
-def run_webrouter(company: str, model: str, tools_obj) -> dict:
+def run_webrouter(item: dict, model: str, tools_obj) -> dict:
     tools = tools_obj.definitions()
-    messages = [{"role": "user", "content": task_prompt(company)}]
+    messages = [{"role": "user", "content": task_prompt(item)}]
     tok_in = tok_out = calls = 0
     web_cost = 0.0
     while True:
@@ -89,12 +89,12 @@ def run_webrouter(company: str, model: str, tools_obj) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--web", choices=["native", "webrouter"], required=True)
-    ap.add_argument("--limit", type=int, default=None, help="only the first N companies")
+    ap.add_argument("--limit", type=int, default=None, help="only the first N items")
     ap.add_argument("--model", default=CONFIG["model"])
     ap.add_argument("--workers", type=int, default=6)
     args = ap.parse_args()
 
-    rows_in = companies()[: args.limit]
+    rows_in = wishlist()[: args.limit]
     tools_obj = None
     if args.web == "webrouter":
         from web_router import WebRouter
@@ -106,7 +106,7 @@ def main() -> None:
             WebRouter(),
             methods=("search", "extract"),
             max_results=5,
-            recency="month",
+            recency="week",
             result_chars=600,
             document_chars=4000,
         )
@@ -114,18 +114,18 @@ def main() -> None:
     def one(c: dict) -> dict:
         try:
             if args.web == "native":
-                out = run_native(c["company"], args.model)
+                out = run_native(c, args.model)
             else:
-                out = run_webrouter(c["company"], args.model, tools_obj)
+                out = run_webrouter(c, args.model, tools_obj)
         except anthropic.APIError as e:
-            print(f"  {c['company']}: API error, skipped ({e.__class__.__name__})")
+            print(f"  #{c['item_id']}: API error, skipped ({e.__class__.__name__})")
             return {"rows": [], "in": 0, "out": 0, "web_calls": 0, "web_cost": 0.0}
         for r in out["rows"]:
-            r["company"] = c["company"]
-        print(f"  {c['company']}: {len(out['rows'])} launches, {out['web_calls']} web calls")
+            r["item_id"] = c["item_id"]
+        print(f"  #{c['item_id']} {c['item']}: {len(out['rows'])} offers, {out['web_calls']} web calls")
         return out
 
-    print(f"Running {len(rows_in)} companies with {args.web} web tools on {args.model} ...")
+    print(f"Running {len(rows_in)} wishlist items with {args.web} web tools on {args.model} ...")
     t0 = time.time()
     with ThreadPoolExecutor(args.workers) as pool:
         outs = list(pool.map(one, rows_in))

@@ -13,9 +13,9 @@ import sys
 from web_router import Budget, WebRouter
 
 PROMPTS = [
-    "read https://www.figma.com/release-notes/",
-    "Figma product launches in the last 30 days",
-    "Write an in-depth report comparing Figma's product launches from the last 30 days",
+    "read https://www.rei.com/c/womens-trail-running-shoes",
+    "carry-on suitcase deals under $300 in the last 7 days",
+    "Write an in-depth buying guide comparing espresso machines with built-in grinders under $700",
 ]
 
 

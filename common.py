@@ -1,4 +1,4 @@
-"""Shared helpers: config, companies, the answer key, result files and prices."""
+"""Shared helpers: config, the shopper, her wishlist, the answer key, result files and prices."""
 
 from __future__ import annotations
 
@@ -12,7 +12,8 @@ RESULTS = ROOT / "results"
 RESULTS.mkdir(exist_ok=True)
 
 CONFIG = json.loads((ROOT / "config.json").read_text())
-FIELDS = ["company", "announcement", "event_date", "evidence", "source_url"]
+PERSONA = json.loads((ROOT / "persona.json").read_text())
+FIELDS = ["item_id", "product", "retailer", "price_usd", "in_stock", "evidence", "source_url", "seen_date"]
 
 # List prices, US$ per million tokens, for the models this repo is set up to use.
 MODEL_PRICES = {
@@ -33,8 +34,8 @@ WEB_TOOL_PRICES = {
 }
 
 
-def companies() -> list[dict]:
-    return list(csv.DictReader(open(ROOT / "companies.csv")))
+def wishlist() -> list[dict]:
+    return list(csv.DictReader(open(ROOT / "wishlist.csv")))
 
 
 def answer_key() -> list[dict]:
@@ -52,14 +53,27 @@ def write_results(path: str | Path, rows: list[dict]) -> None:
         w.writerows(rows)
 
 
-def task_prompt(company: str) -> str:
+def persona_text() -> str:
+    p = PERSONA
+    sizes = ", ".join(f"{k} {v}" for k, v in p["sizes"].items())
     return (
-        f"Find every product launch {company} announced between {CONFIG['window_start']} and "
-        f"{CONFIG['window_end']} (inclusive). A launch is a new product, feature or release the "
-        "company itself announced. Use your web tools, then reply with only a JSON array, no prose: "
-        '[{"announcement": "...", "event_date": "YYYY-MM-DD", "evidence": "one short sentence from '
-        'the source", "source_url": "https://..."}]. Use the date the company announced it, not the '
-        "date you found it. Return [] if there were none."
+        f"Shopper: {p['name']}, ships to {p['ships_to']}. Sizes: {sizes}. "
+        f"Must: {'; '.join(p['must'])}. Prefers: {'; '.join(p['prefers'])}. Avoids: {'; '.join(p['avoids'])}."
+    )
+
+
+def task_prompt(item: dict) -> str:
+    return (
+        f"You are a personal shopping agent. {persona_text()} "
+        f"Wishlist item {item['item_id']}: {item['item']}, at most ${item['max_price_usd']}, must have: "
+        f"{item['must_have']}. Find the best offer for her: a specific product that meets every constraint, "
+        f"with a price shown between {CONFIG['window_start']} and {CONFIG['window_end']} (inclusive). "
+        "Use your web tools, then reply with only a JSON array of at most one offer, no prose: "
+        '[{"product": "brand and model", "retailer": "store name", "price_usd": 123.45, "in_stock": true, '
+        '"evidence": "one short sentence from the source showing the price and stock", '
+        '"source_url": "https://... the product page", "seen_date": "YYYY-MM-DD"}]. '
+        "seen_date is the date the source showed that price (today, for a live product page you opened). "
+        "Return [] if nothing meets every constraint."
     )
 
 

@@ -1,11 +1,11 @@
-"""Run the launch search through a router's plan, and save what came back.
+"""Run the wishlist search through a router's plan, and save what came back.
 
   uv run rule_run.py --router default   # WebRouter's built-in rules
   uv run rule_run.py --router mine      # your rule in my_router.py
 
-For each company: plan + run one search with the router. No API key needed.
+For each wishlist item: plan + run one search with the router. No API key needed.
 Writes, for your coding agent to turn into results/rule_<name>.csv:
-  results/rule_<name>.results.json   per company: the plan's reason, who served it, every result
+  results/rule_<name>.results.json   per item: the plan's reason, who served it, every result
   results/rule_<name>.calls.jsonl    one line per search: tool, input, result_chars, cost_usd
   results/rule_<name>.meta.json      seconds
 """
@@ -19,13 +19,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from web_router import WebRouter
 
-from common import RESULTS, companies
+from common import RESULTS, wishlist
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--router", choices=["default", "mine"], required=True)
-    ap.add_argument("--limit", type=int, default=None, help="only the first N companies")
+    ap.add_argument("--limit", type=int, default=None, help="only the first N items")
     args = ap.parse_args()
 
     if args.router == "mine":
@@ -33,11 +33,11 @@ def main() -> None:
     else:
         router_fn = "rules"
 
-    rows_in = companies()[: args.limit]
+    rows_in = wishlist()[: args.limit]
     with WebRouter(router=router_fn) as router:
 
         def one(c: dict) -> dict:
-            prompt = f"{c['company']} product launches in the last 30 days"
+            prompt = f"{c['item']} ({c['must_have']}) deals under ${c['max_price_usd']} in the last 7 days"
             plan = router.plan(prompt)
             res = router.run(plan)
             results = [
@@ -50,9 +50,12 @@ def main() -> None:
                 for r in res.results
             ]
             reason = plan.decision.reason if plan.decision else None
-            print(f"  {c['company']}: {res.provider}, {len(results)} results  ({reason})")
+            print(f"  #{c['item_id']} {c['item']}: {res.provider}, {len(results)} results  ({reason})")
             return {
-                "company": c["company"],
+                "item_id": c["item_id"],
+                "item": c["item"],
+                "max_price_usd": c["max_price_usd"],
+                "must_have": c["must_have"],
                 "prompt": prompt,
                 "reason": reason,
                 "provider": res.provider,
@@ -60,7 +63,7 @@ def main() -> None:
                 "results": results,
             }
 
-        print(f"Searching {len(rows_in)} companies with the {args.router} router ...")
+        print(f"Searching {len(rows_in)} wishlist items with the {args.router} router ...")
         t0 = time.time()
         with ThreadPoolExecutor(6) as pool:
             out = list(pool.map(one, rows_in))
@@ -76,7 +79,7 @@ def main() -> None:
     dated = sum(1 for o in out for r in o["results"] if r["published_date"])
     total = sum(len(o["results"]) for o in out)
     print(f"\nSaved {total} results ({dated} with a publish date) to results/{base.name}.results.json")
-    print(f"Next: turn them into results/{base.name}.csv (launches only), then: uv run score.py results/{base.name}.csv")
+    print(f"Next: turn them into results/{base.name}.csv (qualifying offers only), then: uv run score.py results/{base.name}.csv")
 
 
 if __name__ == "__main__":

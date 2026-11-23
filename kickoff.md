@@ -1,18 +1,26 @@
 # Kickoff: your agent's own web search
 
-You're helping in a workshop. Work through these steps without asking questions.
+You're helping in a workshop. You are Maya's personal shopping agent. Work through these
+steps without asking questions.
 
-1. Read `companies.csv` (30 companies) and `config.json` (`window_start`, `window_end`).
+1. Read `persona.json` (Maya: where she lives, her sizes, what every offer must meet),
+   `wishlist.csv` (30 items, each with a `max_price_usd` and a `must_have`) and
+   `config.json` (`window_start`, `window_end`: prices must have been shown in this window).
 2. Run `date -u +%FT%TZ` and remember it as the start time.
-3. For each company, use **only your built-in web search and web fetch tools** (install nothing,
-   use no other web tools) to find the product launches the company announced inside the window.
-   A launch is a new product, feature or release the company itself announced.
+3. For each wishlist item, use **only your built-in web search and web fetch tools** (install
+   nothing, use no other web tools) to find the best offer for Maya: one specific product that
+   meets every constraint in `persona.json` and the item's row, in stock, at or under the max
+   price, from a US retailer or the brand's own store.
 4. **Log every web tool call** you make, one JSON line per call, appended to
    `results/baseline.calls.jsonl`:
    `{"tool": "<tool name, e.g. WebSearch or WebFetch>", "input": "<query or URL>", "result_chars": <approximate length of what the tool returned, in characters>}`
    Log calls that failed or returned nothing too.
-5. Write `results/baseline.csv` with columns `company,announcement,event_date,evidence,source_url`
-   (`event_date` as YYYY-MM-DD: the date the company announced it; `evidence`: one short sentence from the source).
+5. Write `results/baseline.csv` with columns
+   `item_id,product,retailer,price_usd,in_stock,evidence,source_url,seen_date`, one row per item
+   (skip an item if nothing qualifies). `price_usd`: a number. `in_stock`: true or false.
+   `evidence`: one short sentence from the source showing the price and stock. `source_url`: the
+   product page. `seen_date` (YYYY-MM-DD): the date the source showed that price (today, for a
+   live product page you opened; the article's date, for a deal post or roundup).
 6. Run `date -u +%FT%TZ` again, then write `results/baseline.meta.json`:
    `{"started": "...", "finished": "...", "seconds": <elapsed>, "agent": "<your name and model>"}`
 7. If `uv` isn't installed, install it (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
