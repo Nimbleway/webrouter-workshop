@@ -14,12 +14,13 @@ counted offer for a product the answer key also lists for that item.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from common import CONFIG, answer_key, read_results, wishlist
+from common import CONFIG, FIELDS, answer_key, read_results, wishlist
 
 STOP = {"the", "a", "and", "for", "with", "in", "of", "women", "womens", "s", "new", "by", "x"}
 
@@ -50,6 +51,38 @@ def price(value) -> float | None:
 
 def truthy(value) -> bool:
     return str(value).strip().lower() in {"true", "yes", "1", "in stock", "y"}
+
+
+def record_id(row: dict) -> str:
+    """A stable id for one result row, used to attach a reviewer's label to it."""
+    payload = [str(row.get(k, "")).strip() for k in FIELDS]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()[:20]
+
+
+def reviewed(rows: list[dict], review: dict) -> dict:
+    """Counts from an optional <run>.review.json: offers a person checked against the source page.
+
+    {"records": [{"record_id": "...", "status": "valid|invalid|duplicate|unresolved",
+                  "event_id": "item-1-brand-model", "verified_source": "https://..."}]}
+    Rows without a label stay unresolved, a valid label needs an event_id and a verified_source,
+    and a repeated valid event_id counts once. Precision is reported only when every row is reviewed.
+    """
+    labels = {r["record_id"]: r for r in review.get("records", [])}
+    counts = dict.fromkeys(("valid", "invalid", "duplicate", "unresolved"), 0)
+    seen = set()
+    for row in rows:
+        label = labels.get(record_id(row), {})
+        status = label.get("status", "unresolved")
+        event = label.get("event_id")
+        if status not in counts or (status == "valid" and (not event or not label.get("verified_source"))):
+            status = "unresolved"
+        if status == "valid" and event in seen:
+            status = "duplicate"
+        if status == "valid":
+            seen.add(event)
+        counts[status] += 1
+    counts["precision"] = round(counts["valid"] / len(rows), 3) if rows and not counts["unresolved"] else None
+    return counts
 
 
 def score(path: str | Path, n_items: int | None = None) -> dict:
@@ -111,6 +144,9 @@ def score(path: str | Path, n_items: int | None = None) -> dict:
         out.update(json.loads(meta.read_text()))
     if calls.exists():
         out.update(estimate(calls))
+    review = Path(path).with_suffix(".review.json")
+    if review.exists():
+        out.update(reviewed(rows, json.loads(review.read_text())))
     return out
 
 
@@ -125,7 +161,7 @@ def estimate(calls_path: Path) -> dict:
     """
     from common import CONFIG, WEB_TOOL_PRICES, llm_cost
 
-    n = chars = 0
+    n = chars = unknown = 0
     web_cost = 0.0
     for raw in calls_path.read_text().splitlines():
         if not raw.strip():
@@ -134,13 +170,17 @@ def estimate(calls_path: Path) -> dict:
         n += 1
         chars += int(c.get("result_chars") or 0) + len(str(c.get("input") or ""))
         reported = c.get("cost_usd")
-        web_cost += float(reported) if reported is not None else WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower(), 0.0)
+        listed = WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower())
+        if reported is None and listed is None:
+            unknown += 1  # no reported cost and no list price: counted as $0 below, and flagged
+        web_cost += float(reported) if reported is not None else (listed or 0.0)
     tokens = chars // 4
     return {
         "tool_calls": n,
         "est_tool_tokens": tokens,
         "est_web_cost_usd": round(web_cost, 4),
         "est_cost_usd": round(web_cost + llm_cost(CONFIG["model"], tokens, 0), 4),
+        "unknown_cost_calls": unknown,
     }
 
 
@@ -154,11 +194,16 @@ def show(s: dict) -> None:
     print(f"  not in stock       {s['out_of_stock']}")
     print(f"  no evidence / URL  {s['unsupported']}")
     print(f"  not in answer key  {s['not_in_key']}  (check these by hand: the key is a reference, not the only answer)")
-    for k, label in [("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
+    for k, label in [("valid", "reviewed valid"), ("invalid", "reviewed invalid"), ("duplicate", "reviewed duplicate"),
+                     ("unresolved", "not yet reviewed"), ("precision", "reviewed precision"),
+                     ("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
                      ("est_cost_usd", "est. cost (US$)"), ("seconds", "time (s)"), ("input_tokens", "input tokens"), ("output_tokens", "output tokens"),
-                     ("web_calls", "web calls"), ("cost_usd", "cost (US$)")]:
+                     ("web_calls", "web calls"), ("model_cost_usd", "model est. (US$)"),
+                     ("provider_returned_estimate_usd", "provider est. (US$)"), ("cost_usd", "cost (US$)")]:
         if k in s:
-            print(f"  {label:<18} {s[k]}")
+            print(f"  {label:<18} {'unknown' if s[k] is None else s[k]}")
+    if s.get("unknown_cost_calls"):
+        print(f"  unpriced calls     {s['unknown_cost_calls']}  (no cost reported: counted as $0, so the cost is a floor)")
 
 
 def line(s: dict) -> str:
