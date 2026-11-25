@@ -1,50 +1,42 @@
-"""Put every scored run side by side.
-
-Usage: uv run compare.py            # every results/*.csv
-       uv run compare.py a.csv b.csv
-"""
-
+"""Compare named runs without confusing draft overlap with validated quality."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 from common import RESULTS
 from score import score
 
-COLUMNS = [
-    ("found", "found"),
-    ("stale_or_undated", "stale"),
-    ("unsupported", "no source"),
-    ("seconds", "time s"),
-    ("tool_calls", "web calls"),
-    ("est_tool_tokens", "tokens"),
-    ("est_cost_usd", "cost $"),
-]
-# Runs measured through the API (harness.py, rule_run.py) report exact numbers instead.
-MEASURED = {"tool_calls": "web_calls", "est_tool_tokens": "input_tokens", "est_cost_usd": "cost_usd"}
+
+def run_name(path):
+    manifest = path.parent / 'manifest.json'
+    if not manifest.exists():
+        return path.stem
+    m = json.loads(manifest.read_text())
+    arm = 'native' if m['web'] == 'native' else f"webrouter-{m['extract_provider']}"
+    return f"{arm}/{m['run_id']}"
 
 
-def main() -> None:
-    files = [Path(f) for f in sys.argv[1:]] or sorted(RESULTS.glob("*.csv"))
+def main():
+    files = [Path(f) for f in sys.argv[1:]] or sorted(RESULTS.rglob('*.csv'))
     if not files:
-        print("No results yet: run the kickoff first.")
+        print('No results yet: run the kickoff first.')
         return
-    rows = [score(f) for f in files]
-    name_w = max(len(f.stem) for f in files) + 2
-    print("run".ljust(name_w) + "".join(label.rjust(11) for _, label in COLUMNS))
-    for f, s in zip(files, rows):
-        cells = []
-        for key, _ in COLUMNS:
-            v = s.get(key, s.get(MEASURED.get(key, ""), "-"))
-            if key == "found":
-                v = f"{s['found']}/{s['key_total']}"
-            cells.append(str(v).rjust(11))
-        print(f.stem.ljust(name_w) + "".join(cells))
-    print("\nFor your agent's runs, tokens and cost are estimates from its log of web tool calls")
-    print("(results/<run>.calls.jsonl): ~4 characters per token, list prices per call.")
-    print("API runs report measured tokens and list-price cost estimates. '-' means not measured.")
+    columns = [('rows', 'rows'), ('valid', 'valid'), ('unresolved', 'unresolved'),
+               ('seconds', 'seconds'), ('model_cost_usd', 'model est $'),
+               ('provider_returned_estimate_usd', 'provider $'), ('cost_usd', 'total est $')]
+    names = [run_name(f) for f in files]
+    width = max(map(len, names)) + 2
+    print('run'.ljust(width) + ''.join(label.rjust(13) for _, label in columns))
+    for name, path in zip(names, files):
+        result = score(path)
+        print(name.ljust(width) + ''.join(str(result.get(k) if result.get(k) is not None else '-').rjust(13)
+                                          for k, _ in columns))
+    print('\nValid/unresolved require source-reviewed .review.json labels. Draft-key overlap is not accuracy.')
+    print('Prices are estimates. Provider subtotals omit unknown and losing attempts; - means unknown or unreviewed.')
+    print('Attendee tool-log estimates exclude some model work and are shown separately by score.py.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

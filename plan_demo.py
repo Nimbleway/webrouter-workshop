@@ -8,14 +8,15 @@ nothing. Then the same prompts get a tight budget, to show what gets dropped.
 
 from __future__ import annotations
 
-import sys
+import argparse
+from common import CONFIG
 
 from web_router import Budget, WebRouter
 
 PROMPTS = [
     "read https://www.figma.com/release-notes/",
-    "Figma product launches in the last 30 days",
-    "Write an in-depth report comparing Figma's product launches from the last 30 days",
+    f"Figma latest product launches between {CONFIG['window_start']} and {CONFIG['window_end']}",
+    f"Write an in-depth report comparing Figma product launches between {CONFIG['window_start']} and {CONFIG['window_end']}",
 ]
 
 
@@ -34,8 +35,15 @@ def show(router: WebRouter, prompt: str, budget: Budget | None = None) -> None:
 
 
 def main() -> None:
-    prompts = sys.argv[1:] or PROMPTS
-    with WebRouter() as router:
+    ap = argparse.ArgumentParser()
+    ap.add_argument('prompts', nargs='*')
+    ap.add_argument('--router', choices=['default', 'mine'], default='default')
+    args = ap.parse_args()
+    router_fn = 'rules'
+    if args.router == 'mine':
+        from my_router import my_router as router_fn
+    prompts = args.prompts or PROMPTS
+    with WebRouter(router=router_fn) as router:
         print("== Plans, nothing runs ==\n")
         for p in prompts:
             show(router, p)

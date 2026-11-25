@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from difflib import SequenceMatcher
+import hashlib
 from pathlib import Path
 
 from common import CONFIG, answer_key, read_results
@@ -24,18 +24,26 @@ def norm_url(url: str) -> str:
     return url.rstrip("/")
 
 
-def similar(a: str, b: str) -> bool:
-    a, b = a.lower(), b.lower()
-    if SequenceMatcher(None, a, b).ratio() >= 0.6:
-        return True
-    wa, wb = set(re.findall(r"[a-z0-9]+", a)), set(re.findall(r"[a-z0-9]+", b))
-    wa, wb = wa - {"the", "a", "and", "for", "is", "now", "new", "of", "to", "with", "in"}, wb
-    return bool(wa) and len(wa & wb) / len(wa) >= 0.6
+def record_id(row: dict) -> str:
+    from common import FIELDS
+    payload = [str(row.get(k, "")).strip() for k in FIELDS]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()[:20]
+
+
+def same_event(a, b):
+    """Conservative draft-key overlap, not source verification."""
+    return (a.get("company", "").casefold() == b.get("company", "").casefold()
+            and a.get("event_date") == b.get("event_date")
+            and a.get("announcement", "").strip().casefold() == b.get("announcement", "").strip().casefold())
 
 
 def score(path: str | Path) -> dict:
     rows = read_results(path)
-    key = answer_key()
+    scope = {r.get("company", "").casefold() for r in rows}
+    metrics_path = Path(path).with_suffix(".metrics.json")
+    if metrics_path.exists():
+        scope.update(c.casefold() for c in json.loads(metrics_path.read_text()).get("companies", []))
+    key = [r for r in answer_key() if r["company"].casefold() in scope]
     start, end = CONFIG["window_start"], CONFIG["window_end"]
     matched_keys, stale, unsupported, unverified = set(), 0, 0, 0
     for r in rows:
@@ -48,9 +56,7 @@ def score(path: str | Path) -> dict:
         for i, k in enumerate(key):
             if k["company"].lower() != (r.get("company") or "").lower():
                 continue
-            if norm_url(k["source_url"]) == norm_url(r.get("source_url", "")) or similar(
-                k["announcement"], r.get("announcement", "")
-            ):
+            if i not in matched_keys and same_event(k, r):
                 hit = i
                 break
         if hit is None:
@@ -66,6 +72,29 @@ def score(path: str | Path) -> dict:
         "unsupported": unsupported,
         "not_in_key": unverified,
     }
+    review_path = Path(path).with_suffix(".review.json")
+    if review_path.exists():
+        review = json.loads(review_path.read_text())
+        labels = {r["record_id"]: r for r in review["records"]}
+        counts = dict.fromkeys(("valid", "invalid", "duplicate", "unresolved"), 0)
+        seen = set()
+        for row in rows:
+            label = labels.get(record_id(row), {})
+            status = label.get("status", "unresolved")
+            event = label.get("event_id")
+            if status == "valid" and (not event or not label.get("verified_source")):
+                status = "unresolved"
+            if status == "valid" and event in seen:
+                status = "duplicate"
+            if status == "valid":
+                seen.add(event)
+            counts[status] += 1
+        out.update(counts)
+        out["precision"] = counts["valid"] / len(rows) if rows and not counts["unresolved"] else None
+        out["reviewed_reference_coverage"] = len(seen & set(review.get("reference_event_ids", [])))
+        out["reviewed_reference_total"] = len(set(review.get("reference_event_ids", [])))
+        out["recall"] = (out["reviewed_reference_coverage"] / out["reviewed_reference_total"]
+                         if review.get("reference_complete") and out["reviewed_reference_total"] else None)
     metrics = Path(path).with_suffix(".metrics.json")
     meta = Path(path).with_suffix(".meta.json")
     calls = Path(path).with_suffix(".calls.jsonl")
@@ -89,7 +118,7 @@ def estimate(calls_path: Path) -> dict:
     """
     from common import CONFIG, WEB_TOOL_PRICES, llm_cost
 
-    n = chars = 0
+    n = chars = unknown = 0
     web_cost = 0.0
     for raw in calls_path.read_text().splitlines():
         if not raw.strip():
@@ -98,45 +127,47 @@ def estimate(calls_path: Path) -> dict:
         n += 1
         chars += int(c.get("result_chars") or 0) + len(str(c.get("input") or ""))
         reported = c.get("cost_usd")
-        web_cost += float(reported) if reported is not None else WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower(), 0.0)
+        price = float(reported) if reported is not None else WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower())
+        if price is None:
+            unknown += 1
+        else:
+            web_cost += price
     tokens = chars // 4
     return {
         "tool_calls": n,
         "est_tool_tokens": tokens,
         "est_web_cost_usd": round(web_cost, 4),
-        "est_cost_usd": round(web_cost + llm_cost(CONFIG["model"], tokens, 0), 4),
+        "est_cost_usd": None if unknown else round(web_cost + llm_cost(CONFIG["model"], tokens, 0), 4),
+        "unknown_cost_calls": unknown,
     }
 
 
 def show(s: dict) -> None:
     print(f"\n{s['file']}")
-    print(f"  launches found     {s['found']} / {s['key_total']} in the answer key")
+    print(f"  exact draft overlap {s['found']} / {s['key_total']} in the scoped draft key (not accuracy)")
     print(f"  rows returned      {s['rows']}")
     print(f"  stale or undated   {s['stale_or_undated']}")
     print(f"  no evidence / URL  {s['unsupported']}")
     print(f"  not in answer key  {s['not_in_key']}  (check these by hand: the key is a draft)")
-    for k, label in [("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
+    for k, label in [("valid", "validated records"), ("invalid", "invalid records"), ("duplicate", "duplicates"), ("unresolved", "unresolved"), ("precision", "reviewed precision"), ("recall", "reviewed recall"), ("model_cost_usd", "model estimate $"), ("provider_returned_estimate_usd", "provider subtotal $"), ("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
                      ("est_cost_usd", "est. cost (US$)"), ("seconds", "time (s)"), ("input_tokens", "input tokens"), ("output_tokens", "output tokens"),
                      ("web_calls", "web calls"), ("cost_usd", "cost (US$)")]:
         if k in s:
-            print(f"  {label:<18} {s[k]}")
+            value = "unknown" if s[k] is None else s[k]
+            print(f"  {label:<18} {value}")
 
 
 def line(s: dict) -> str:
-    cost = s.get("cost_usd", s.get("est_cost_usd"))
-    if cost is None:
-        per_cent = "cost not measured"
-    elif cost == 0:
-        per_cent = "free (keyless backends)"
-    else:
-        per_cent = f"{s['found'] / (cost * 100):.1f} found per cent"
-    return f"{Path(s['file']).stem}: {s['found']}/{s['key_total']} found, {s['stale_or_undated']} stale, {per_cent}"
+    if "valid" in s:
+        return f"{Path(s['file']).stem}: {s['valid']}/{s['rows']} validated, {s['unresolved']} unresolved"
+    return f"{Path(s['file']).stem}: {s['rows']} records, {s['found']}/{s['key_total']} exact draft overlap; quality unreviewed"
+
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
-    ap.add_argument("--line", action="store_true", help="one line per file, for the leaderboard")
+    ap.add_argument("--line", action="store_true", help="one diagnostic line per file")
     args = ap.parse_args()
     for f in args.files:
         s = score(f)

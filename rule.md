@@ -1,25 +1,19 @@
 # Write your own routing rule
 
-You're helping in a workshop. Work through these steps without asking questions.
+1. Run `uv run plan_demo.py --router default` and save its printed plan.
+2. Open `my_router.py`. For fresh-result prompts without a URL, change the preferred
+   search-provider order and explain the reason in the returned decision.
+3. Run `uv run plan_demo.py --router mine`. Compare the same prompts' methods,
+   provider order and exclusions with the default plan. No web requests run.
+4. Explain what your rule changed and what still requires a source check. A date in
+   a prompt does not establish that an announcement falls inside the window.
 
-1. Run `uv run rule_run.py --router default` and keep its score. That's the
-   open source WebRouter's built-in rules on the 30 companies.
-2. Open `my_router.py` and read its docstring. Implement `my_router()`: when a prompt asks
-   for fresh results ("last N days", "this month", "latest") and has no URL, return a
-   `RouteDecision` that sends the search to providers that handle dates well, first.
-   Use what `uv run providers.py Figma` shows about which free providers return dated
-   results. Keep it to about ten lines. Don't look in `solutions/` unless I ask.
-3. Run `uv run rule_run.py --router mine` and compare its score with step 1:
-   launches found, stale results and cost.
-4. Try one more idea of your own (a different provider order, a rule for another kind of
-   prompt) and rerun. Keep whichever scores better.
-5. Print the leaderboard line for your best run:
-   `uv run score.py results/rule_mine.csv --line`
-   and tell me to post it in the workshop channel.
+Optional take-home: run `uv run rule_run.py --router default --limit 5` and
+`uv run rule_run.py --router mine --limit 5`. Each saves a new result directory.
+Pass the printed CSV paths to `compare.py`, then validate the records against sources.
+Keep every run; do not select only the highest draft-key overlap.
 
-A router can choose the method, the providers and a few safe options (search depth,
-number of results). It can't change options like the date filter: those stay with the
-caller, so a call never runs looser than you asked. If your rule tries, the plan says so.
-
-No API key is needed. If `ANTHROPIC_API_KEY` is set, `rule_run.py` also uses Claude to turn
-search results into cleaner launch records.
+A router can choose the method, provider order and safe options such as search depth.
+The caller retains control of date filters. Use the fixed window in `config.json`.
+The no-key rule runner returns unverified search hits; with `ANTHROPIC_API_KEY` it
+structures those hits using a model. Compare only runs using the same mode.

@@ -5,7 +5,7 @@ description = "AI Dev NYC workshop: give your agent a web router"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=2.12",
-    "webrouter[search,extract]==0.14.0",
+    "webrouter[mcp,search,extract]==0.14.0",
 ]
 
 [tool.uv]

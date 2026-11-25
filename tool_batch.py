@@ -2,18 +2,29 @@
 from __future__ import annotations
 
 import time
+from provider_trace import attempt_sink
 from concurrent.futures import Executor
 
 
 def execute_batch(tools, uses: list, pool: Executor) -> tuple[list, float, list]:
     def execute(use):
         started = time.perf_counter()
-        result = tools.call(use.name, use.input)
+        attempts = []
+        token = attempt_sink.set(attempts)
+        try:
+            result = tools.call(use.name, use.input)
+        finally:
+            attempt_sink.reset(token)
         response = result.response
         urls = use.input.get("urls") if isinstance(use.input, dict) else None
         trace = {
             "tool": use.name,
             "tool_use_id": use.id,
+            "input": use.input,
+            "content": result.content,
+            "provider_attempts": attempts,
+            "cost_usd": getattr(response, "cost_usd", None),
+            "cost_source": getattr(response, "cost_source", None),
             "seconds": round(time.perf_counter() - started, 4),
             "provider": getattr(response, "provider", None),
             "result_chars": len(result.content),

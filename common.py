@@ -39,11 +39,12 @@ def companies() -> list[dict]:
 
 
 def answer_key() -> list[dict]:
-    return list(csv.DictReader(open(ROOT / "answer_key.csv")))
+    return read_results(ROOT / "answer_key.csv")
 
 
 def read_results(path: str | Path) -> list[dict]:
-    return list(csv.DictReader(open(path)))
+    with open(path) as source:
+        return list(csv.DictReader(source))
 
 
 def write_results(path: str | Path, rows: list[dict]) -> None:
@@ -72,14 +73,20 @@ def task_prompt(company: str) -> str:
     )
 
 
-def parse_json_array(text: str) -> list[dict]:
+def parse_json_array(text: str, *, strict: bool = False) -> list[dict]:
     match = re.search(r"\[.*\]", text, re.S)
     if not match:
+        if strict:
+            raise ValueError("No result array")
         return []
     try:
         data = json.loads(match.group(0))
     except json.JSONDecodeError:
+        if strict:
+            raise ValueError("Invalid result array") from None
         return []
+    if strict and any(not isinstance(d, dict) or not all(isinstance(d.get(k), str) for k in FIELDS[1:]) for d in data):
+        raise ValueError("Malformed result record")
     return [d for d in data if isinstance(d, dict)]
 
 

@@ -2,9 +2,9 @@
 
 Hands-on companion to the AI Dev NYC 2026 workshop *Your Agents Need a Web Router*.
 
-One task runs through the whole session: **find every product launch from 30 companies in
-a 30-day window**, with the company, the announcement, the event date, the evidence and the
-source URL. You run it with your coding agent's own web search, then with the open source
+One task runs through the whole session: **find every product launch from five companies in
+a fixed date window**, with the company, the announcement, the event date, the evidence and the
+source URL. You run it with your coding agent's own search and fetch, then with the open source
 [WebRouter](https://github.com/Nimbleway/webrouter) (an Apache 2.0 library that puts one
 interface in front of many web search, extract and browser providers), and compare quality,
 time, tokens and cost.
@@ -13,8 +13,8 @@ time, tokens and cost.
 
 - A coding agent: Claude Code, Cursor or similar.
 - [uv](https://docs.astral.sh/uv/). Your agent installs it if it's missing.
-- No API keys. WebRouter's search and extract work keyless; costs and tokens for your agent's
-  own runs are estimated from a log your agent keeps of its web calls.
+- Your coding agent needs its usual model access or subscription. WebRouter search and extract
+  can work without extra provider keys, subject to backend availability and quotas.
 
 You don't need to clone WebRouter: the exercises run it with `uv` / `uvx` when they need it.
 
@@ -28,10 +28,10 @@ Then, when the speaker gets there, paste each of these in the same agent:
 
 | Step | Paste | What happens |
 |---|---|---|
-| 1 | `Follow kickoff.md` (with the clone line above) | Your agent searches the 30 companies with its built-in web search, logs its web calls and scores the result. |
-| 2 | `Follow router.md` | Your agent adds WebRouter as an MCP server, reruns the same task with a budget, and compares with your baseline. Then it compares free providers on one company. |
+| 1 | `Follow kickoff.md` (with the clone line above) | Your agent searches the first five companies with its built-in web search, logs its web calls and scores the result. |
+| 2 | `Follow router.md` | Your agent adds WebRouter as an MCP server, reruns the same task with a budget, and compares with your baseline. Then it compares providers on one company. |
 | 3 | `Follow plan.md` | Your agent asks WebRouter for plans without running anything, and explains the method, providers and reasons. |
-| 4 | `Follow rule.md` | You write a ~10-line routing rule, rerun, rescore and post your score. |
+| 4 | `Follow rule.md` | You write a ~10-line routing rule, inspect the changed plan, then compare saved outputs. |
 
 ## Files
 
@@ -41,50 +41,86 @@ Then, when the speaker gets there, paste each of these in the same agent:
 | `config.json` | The date window and the model `harness.py` uses. |
 | `answer_key.csv` | Launches each company announced on its own site in the window. A draft: see below. |
 | `kickoff.md`, `router.md`, `plan.md`, `rule.md` | The prompts your agent follows. |
-| `score.py` | Scores a results CSV: launches found, stale or undated, missing evidence, plus time, tokens and cost. |
+| `score.py` | Reports draft-key overlap and field checks, plus source-reviewed labels when supplied. |
 | `compare.py` | All your runs side by side. |
-| `providers.py` | One search across WebRouter's free providers, to see how much the provider alone changes the answer. |
+| `providers.py` | One search across WebRouter's available providers, to see how much the provider alone changes the answer. |
 | `plan_demo.py` | WebRouter's plans for a few prompts, with and without a tight budget. |
 | `my_router.py` | Your routing rule (step 4). `solutions/my_router.py` has one answer. |
 | `rule_run.py` | Runs the task through a router's plan and scores it. |
-| `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools, measuring API tokens and estimating cost. |
+| `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with native search and fetch or with WebRouter's search and extract, measuring API tokens and estimating cost. |
 | `build_answer_key.py` | For organizers: rebuilds the draft answer key (needs `EXA_API_KEY`). |
 
-## Check the runtime comparison
+## Reproduce the comparison
 
-With `ANTHROPIC_API_KEY` set in your environment, start with the same five companies:
+Set `ANTHROPIC_API_KEY`, then run the same five companies with each configuration:
 
 ```bash
-uv run harness.py --web native --limit 5
-uv run harness.py --web webrouter --limit 5
-uv run compare.py
+uv run python -m unittest -v
+uv run harness.py --web native
+uv run harness.py --web webrouter --extract-provider auto
+uv run harness.py --web webrouter --extract-provider max
 ```
 
-The harness runs independent WebRouter calls from each model turn concurrently, with
-at most six tool calls in flight across all companies. Its `AsyncWebRouter` also fetches
-the URLs inside each extraction batch concurrently. Using a synchronous router here
-would fetch those URLs one at a time even when tool calls run in parallel.
-Extraction uses `max` with a two-second hedge: the normal first backend gets two
-seconds alone, then alternatives start if it is still pending. The first complete
-batch wins; if only partial results are available, failed URLs stay explicit.
-Each tool call has a 20-second deadline, so a stalled fetch cannot hold a turn for
-the previous 60-second limit. These failures are returned to the agent, not counted
-as successful pages. A hedge may start extra billable fetches, so compare cost too.
-Use `--tool-workers 1` to run the tool calls serially, `--search-provider <name>` to test
-a specific search backend, or `--extract-provider auto` to compare against sequential
-provider fallback (URL batches still run asynchronously).
-Each rerun overwrites that mode's results, so save them before changing settings.
-Both modes enable automatic five-minute prompt caching. Metrics retain total input
-tokens and separate uncached input, cache writes and cache reads; the cost estimate
-uses their different rates from [Anthropic's pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+Each command writes a new directory under `results/`, prints its path, and preserves
+previous runs. Pass the CSV paths to `uv run compare.py <native.csv> <auto.csv> <max.csv>`.
+Repeat all three configurations, rotating their order, before drawing conclusions.
+Use all 30 companies only for a broader follow-up, not the live exercise.
 
-WebRouter runs also write `results/harness_webrouter.trace.jsonl`: the company, tool,
-provider, duration, response size and error flag for every completed tool call, plus
-the requested URL count and successful/failed document counts for extraction calls.
-Use this alongside the CSV score and metrics to check runtime without losing track of
-result quality. A five-company run is a quick check, not the full 30-company benchmark.
+Both paths request the same model with fallback disabled and allow at most 15 searches
+and five fetched URLs per company. Failed routed requests consume that allowance too.
+Native uses hosted search plus fetch; WebRouter uses search plus asynchronous extraction.
+The native service's dynamic filtering and provider search results still differ from
+WebRouter's tools. This compares configured web toolkits, not routing in isolation.
+An observed native limit overrun or incomplete output invalidates the run.
 
-Run the offline concurrency tests with `uv run python -m unittest -v test_tool_batch.py`.
+The default extraction policy is `auto`. Optional `max` lets the first backend run for
+two seconds before racing alternatives; an earlier failure starts alternatives immediately.
+A complete batch wins; partial failures remain explicit. Each tool call has a 20-second
+deadline. At most six routed tool calls run concurrently, but each may dispatch several
+provider requests. Native fetch uses a 4,000-token content limit; routed extraction uses
+16,000 characters per page. These are approximate, not identical, content budgets.
+
+The attendee MCP exercise uses `auto` under its shared cost cap. Do not force `max`
+under that cap: this package version cannot bound its race cost. The API harness is a
+separate experiment with retrieval limits, not the attendee's dollar budget.
+
+Artifacts include the configuration, package versions, source hashes, company status,
+serving models, cache usage, tool results and provider attempts (including failed or
+cancelled race members). The unique session prefix limits cross-run prompt-cache reuse;
+each run enables the same five-minute caching policy. Backend caches and quotas can
+still vary. Generated artifacts stay local and are ignored by git.
+
+Costs are estimates, not invoices. Model usage uses the distinct input, output, cache-write
+and cache-read prices from [Anthropic](https://platform.claude.com/docs/en/about-claude/pricing).
+WebRouter's returned-provider subtotal does not include every losing or failed attempt;
+unknown prices remain unknown, and its total cost is not displayed as a complete amount.
+Do not interpret cancellation as proof that a provider did not bill.
+
+## Validate results
+
+`score.py` reports conservative exact-title/date draft-key overlap, not accuracy. Review
+records against dated primary sources before comparing quality. Define one event, check
+its announcement date and supporting evidence, and label duplicates and unresolved rows.
+Use the same rubric for every arm and hide the arm during review where possible.
+
+Optional `<run>.review.json` sidecars contain:
+
+```json
+{
+  "records": [{"record_id": "hash from score.record_id(row)", "status": "valid",
+               "event_id": "stable-event-id", "verified_source": "https://example.com/release"}],
+  "reference_event_ids": ["stable-event-id"],
+  "reference_complete": false
+}
+```
+
+Statuses are `valid`, `invalid`, `duplicate`, or `unresolved`. Missing labels remain
+unresolved. Repeated valid event IDs count once. Precision is reported only when all
+returned rows are reviewed. Recall requires an independently reviewed, complete scoped
+reference; a pooled list of returned events alone is not an exhaustive reference.
+Keep the event/date decisions and evidence beside the review file for an audit.
+
+For the 40-minute session and the claims each exercise supports, see [workshop.md](workshop.md).
 
 ## About the answer key
 

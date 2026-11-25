@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from tool_batch import execute_batch
+from provider_trace import trace_providers
 
 
 class BatchTests(unittest.TestCase):
@@ -37,7 +38,7 @@ class BatchTests(unittest.TestCase):
         self.assertAlmostEqual(llm_cost("claude-haiku-5-5", 1_000_000, 1_000_000,
                                         cache_read=1_000_000, cache_write=1_000_000), 0.735)
 
-    def test_default_profile_hedges_a_stalled_primary_and_returns_every_page(self):
+    def test_opt_in_profile_hedges_a_stalled_primary_and_returns_every_page(self):
         from web_router import AsyncWebRouter
         from web_router.providers.base import ExtractProvider
         from web_router.registry import register_extract_provider, unregister_extract_provider
@@ -85,17 +86,19 @@ class BatchTests(unittest.TestCase):
             register_extract_provider(provider.name, provider)
         try:
             with patch("web_router.AsyncWebRouter", side_effect=isolated_router):
-                tools = harness.webrouter_tools()
+                tools = harness.webrouter_tools(extract_provider="max")
             uses = [SimpleNamespace(id="hedged", name="web_router_extract", input={"urls": [
                 "https://example.com/one", "https://example.com/two"
             ]})]
-            with ThreadPoolExecutor(1) as pool:
+            with trace_providers(), ThreadPoolExecutor(1) as pool:
                 results, cost, trace = execute_batch(tools, uses, pool)
             payload = json.loads(results[0]["content"])
             self.assertFalse(results[0]["is_error"])
             self.assertEqual([d["url"] for d in payload["documents"]], uses[0].input["urls"])
             self.assertEqual(trace[0]["documents"], 2)
             self.assertTrue(cancelled.is_set())
+            self.assertIn("cancelled", [a["outcome"] for a in trace[0]["provider_attempts"]])
+            self.assertTrue(all(a["cost_usd"] is None for a in trace[0]["provider_attempts"]))
         finally:
             for provider in (Primary, Backup):
                 unregister_extract_provider(provider.name)
