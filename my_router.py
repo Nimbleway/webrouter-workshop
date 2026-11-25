@@ -1,4 +1,5 @@
-"""Your routing rule. Edit my_router(), then: uv run rule_run.py --router mine
+"""Your routing rule. Edit my_router(), then: uv run plan_demo.py --router mine
+(take-home, to search with it: uv run rule_run.py --router mine)
 
 A router sees each prompt and decides, before anything runs:
   - tools:     which method to use ("search", "extract", "research", ...)

@@ -5,14 +5,19 @@ The session follows one task: be Maya's personal shopping agent for the first 5 
 retailer, a price, a stock status, one sentence of evidence, the product URL and the date
 that price was shown. All 10 items are the take-home.
 
-| Minutes | Activity |
-|---|---|
-| 0–5 | Explain the task and what counts as a valid offer: in budget, in stock, priced inside the window, with evidence and a URL. |
-| 5–13 | `Follow kickoff.md`: the agent's own search and fetch. Keep a labeled saved run ready. |
-| 13–23 | `Follow router.md`: add WebRouter and repeat on `auto` under the $0.50 budget. Look at which providers served the calls and what failed. |
-| 23–30 | Check a few offers against their product pages. Separate "no evidence" from "no such offer". |
-| 30–37 | `Follow plan.md`, then `Follow rule.md`: read a plan, change the provider order, explain what changed. No web requests. |
-| 37–40 | Discuss observed quality, time and known cost. Rerunning and scoring the rule, and all 10 items, are the take-home. |
+The timing follows the deck. The exercise slides carry their own minutes (5, 10, 5, 5); the
+rest is a suggested split of the other 15.
+
+| Minutes | Slides | Activity |
+|---|---|---|
+| 0–2 | 1 | Cover. Introduce Maya and what counts as a valid offer: in budget, in stock, priced inside the window, with evidence and a URL. |
+| 2–7 | 2 | Your turn: `Clone ... and follow kickoff.md`. The agent's own search and fetch on 5 items. Leave it running. |
+| 7–14 | 3–9 | Why web access is harder than it looks, and the routing recipe, while the baseline finishes. Keep a labeled saved run ready. |
+| 14–24 | 10 | Your turn: `Follow router.md`. Add WebRouter and repeat on `auto` under the $0.50 budget. Look at which providers served the calls and what failed. |
+| 24–28 | 11–13 | Configure vs describe, the measured comparison, the benchmark. Open one or two offers' product pages: separate "no evidence" from "no such offer". |
+| 28–34 | 14–15 | The task as routed steps, then your turn: `Follow plan.md`. Read three plans, cut the budget. No web requests. |
+| 34–39 | 16 | Your turn: `Follow rule.md`. Change the provider order and compare plans. No web requests. |
+| 39–40 | 17–18 | Takeaways and links. Rerunning and scoring the rule, and all 10 items, are the take-home. |
 
 ## Before the session
 
