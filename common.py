@@ -35,15 +35,16 @@ WEB_TOOL_PRICES = {
 
 
 def wishlist() -> list[dict]:
-    return list(csv.DictReader(open(ROOT / "wishlist.csv")))
+    return read_results(ROOT / "wishlist.csv")
 
 
 def answer_key() -> list[dict]:
-    return list(csv.DictReader(open(ROOT / "answer_key.csv")))
+    return read_results(ROOT / "answer_key.csv")
 
 
 def read_results(path: str | Path) -> list[dict]:
-    return list(csv.DictReader(open(path)))
+    with open(path) as source:
+        return list(csv.DictReader(source))
 
 
 def write_results(path: str | Path, rows: list[dict]) -> None:
@@ -77,17 +78,38 @@ def task_prompt(item: dict) -> str:
     )
 
 
-def parse_json_array(text: str) -> list[dict]:
+def _is_offer(d) -> bool:
+    """An offer in the shape task_prompt asks for (item_id is added by the caller)."""
+    if not isinstance(d, dict) or not all(k in d for k in FIELDS[1:]):
+        return False
+    number = isinstance(d["price_usd"], (int, float)) and not isinstance(d["price_usd"], bool)
+    return (number and isinstance(d["in_stock"], bool)
+            and all(isinstance(d[k], str) for k in ("product", "retailer", "evidence", "source_url", "seen_date")))
+
+
+def parse_json_array(text: str, *, strict: bool = False) -> list[dict]:
+    """The JSON array in a model reply. strict: raise ValueError instead of treating a missing,
+    invalid or malformed array as "no offers", so a broken reply isn't scored as an empty one."""
     match = re.search(r"\[.*\]", text, re.S)
     if not match:
+        if strict:
+            raise ValueError("No result array")
         return []
     try:
         data = json.loads(match.group(0))
     except json.JSONDecodeError:
+        if strict:
+            raise ValueError("Invalid result array") from None
         return []
+    if strict and not all(_is_offer(d) for d in data):
+        raise ValueError("Malformed offer")
     return [d for d in data if isinstance(d, dict)]
 
 
-def llm_cost(model: str, usage_in: int, usage_out: int) -> float:
+def llm_cost(model: str, usage_in: int, usage_out: int, *, cache_read: int = 0, cache_write: int = 0) -> float:
+    """List-price estimate. usage_in is uncached input; cache writes (5-minute) cost 1.25x input,
+    cache reads 0.05x input on Opus 5.5 and Sonnet 5.5 (0.1x assumed for other models)."""
     price_in, price_out = MODEL_PRICES.get(model, MODEL_PRICES["claude-opus-5-5"])
-    return usage_in / 1e6 * price_in + usage_out / 1e6 * price_out
+    read_multiplier = 0.05 if model in {"claude-opus-5-5", "claude-sonnet-5-5"} else 0.1
+    return ((usage_in + 1.25 * cache_write + read_multiplier * cache_read) * price_in
+            + usage_out * price_out) / 1e6

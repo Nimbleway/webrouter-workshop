@@ -50,7 +50,10 @@ Then, when the speaker gets there, paste each of these in the same agent:
 | `plan_demo.py` | WebRouter's plans for a few prompts, with and without a tight budget. |
 | `my_router.py` | Your routing rule (step 4). `solutions/my_router.py` has one answer. |
 | `rule_run.py` | Searches the wishlist items through a router's plan (default rules or yours) and saves the raw results and a call log; your agent turns them into a CSV to score. |
-| `organizers/harness.py` | Optional, for organizers, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools and measures exact tokens and cost, to check the estimates attendees get from their call logs. |
+| `organizers/harness.py` | Optional, for organizers, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in search and fetch or with WebRouter's search and extract, under the same limits, and measures API tokens, to check the estimates attendees get from their call logs. See below. |
+| `organizers/provider_trace.py`, `organizers/tool_batch.py` | Used by the harness: run a turn's tool calls in parallel and record every provider attempt. |
+| `organizers/tests/` | Tests for the harness, the attempt ledger and the scoring helpers. |
+| `organizers/workshop.md` | Presenter guide: the 40-minute timing, the preflight and what the numbers support. |
 | `organizers/build_answer_key.py` | For organizers: rebuilds the answer key and the window (needs `NIMBLE_API_KEY`). |
 | `organizers/answer_key_raw.json` | Every row the answer-key agents returned, kept or not, for spot checks. |
 
@@ -70,6 +73,63 @@ Organizers: prices move daily, and the session lands on Cyber Monday. The day be
 `uv run organizers/build_answer_key.py` (window = the 7 days ending today, or pass
 `--end YYYY-MM-DD`). It rewrites the window in `config.json` and `answer_key.csv`;
 spot-check a few items, then commit both.
+
+## For organizers: measure the comparison
+
+`organizers/harness.py` runs the same task through the API, so you can check the numbers
+attendees estimate from their call logs. Set `ANTHROPIC_API_KEY`, then:
+
+```bash
+uv run --group organizers python -m unittest discover -s organizers/tests
+uv run organizers/harness.py --web native
+uv run organizers/harness.py --web webrouter
+uv run organizers/harness.py --web webrouter --extract-provider max
+```
+
+Each command runs the first 5 items (`--limit 10` for all of them), writes a new directory
+under `results/` and prints its path. Earlier runs are kept, and `results/` is ignored by
+git. Pass the CSVs to `uv run compare.py <native.csv> <auto.csv> <max.csv>`. Repeat each
+configuration, in a different order, before you draw a conclusion.
+
+What's held equal: the model (server-side fallback is off, and a run served by another model
+is rejected), the prompt, and the allowance per item, 15 searches and 5 fetched URLs, with
+failed requests counted. What isn't: Claude's hosted search and fetch filter results their own
+way, WebRouter searches use a one-week recency filter (`--recency none` turns it off), and
+page text is capped at 4,000 tokens on one side and 16,000 characters on the other. This
+compares two web toolkits as configured, not routing on its own.
+
+`--extract-provider max` lets the first extractor run for two seconds, then races the others.
+Keep it out of the attendee exercise: under a cost cap, this WebRouter version can't bound
+what a race costs. `--provider-profile keyless` fixes the provider chains and refuses to run
+if a provider key is set, for a comparison anyone can reproduce without accounts.
+
+Every run directory has:
+
+- `manifest.json`: the options, package versions, source hashes, git commit and provider chains.
+- `harness_<web>.csv`, `.metrics.json` and `.details.json`: the offers, the totals, and per-item
+  status, model usage and tool results. A run with a failed or incomplete item exits with an
+  error and reports no total cost.
+- `attempts.json`: every provider attempt, including failed ones and cancelled race losers,
+  with the provider's reported cost and usage, a catalogue estimate and the HTTP outcome.
+  Credentials are recorded as present or absent only; request URLs and bodies aren't stored.
+
+Costs are estimates, not invoices. The model cost uses list prices for input, output, cache
+writes and cache reads. The WebRouter subtotal covers the responses that came back with a
+price; losing and failed attempts may still have been billed, and a cancelled request isn't
+proof of no charge. Check `attempts.json` against your provider accounts before you quote a
+total.
+
+To check quality by hand, put a `<run>.review.json` next to a results CSV:
+
+```json
+{"records": [{"record_id": "from score.record_id(row)", "status": "valid",
+              "event_id": "item-1-brand-model", "verified_source": "https://example.com/product"}]}
+```
+
+`status` is `valid`, `invalid`, `duplicate` or `unresolved`. `score.py` then also shows the
+reviewed counts. Rows without a label stay unresolved, a repeated valid `event_id` counts
+once, and precision appears only when every row is reviewed. Use the same rules for every
+run, and hide which run a row came from while you review, where you can.
 
 ## Links
 
