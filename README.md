@@ -3,7 +3,7 @@
 Hands-on companion to the AI Dev NYC 2026 workshop *Your Agents Need a Web Router*.
 
 One task runs through the whole session: **you're a personal shopping agent for one shopper,
-Maya, with a 30-item holiday wishlist**. For each item, find one specific product that meets
+Maya, with a 10-item holiday wishlist**. For each item, find one specific product that meets
 every constraint (her size, her price cap, in stock, ships to Brooklyn within a week, free
 returns), with the retailer, the price, the evidence, the product URL and the date that price
 was shown, inside the last 7 days. You run it with your coding agent's own web search, then with the open source
@@ -30,17 +30,17 @@ Then, when the speaker gets there, paste each of these in the same agent:
 
 | Step | Paste | What happens |
 |---|---|---|
-| 1 | `Follow kickoff.md` (with the clone line above) | Your agent shops the 30 wishlist items with its built-in web search, logs its web calls and scores the result. |
-| 2 | `Follow router.md` | Your agent adds WebRouter as an MCP server, reruns the same task with a budget, and compares with your baseline. Then it compares free providers on one wishlist item. |
+| 1 | `Follow kickoff.md` (with the clone line above) | Your agent shops the first 5 wishlist items with its built-in web search and fetch (at most 15 searches and 5 page reads per item), logs its web calls and scores the result. All 10 items are the take-home. |
+| 2 | `Follow router.md` | Your agent adds WebRouter as an MCP server, reruns the same 5 items with the same limits on `auto` under a $0.50 budget, and compares valid offers and cost per valid offer with your baseline. Then it compares free providers on one wishlist item. |
 | 3 | `Follow plan.md` | Your agent asks WebRouter for plans without running anything, and explains the method, providers and reasons. |
-| 4 | `Follow rule.md` | You write a ~10-line routing rule, rerun, rescore and post your score. |
+| 4 | `Follow rule.md` | You write a ~10-line routing rule and compare its plans with the default rules' plans (no web requests). Rerunning and scoring your rule is the take-home. |
 
 ## Files
 
 | File | What it is |
 |---|---|
 | `persona.json` | The shopper: where she lives, her sizes, what every offer must meet. |
-| `wishlist.csv` | Her 30 items, each with a `max_price_usd` and a `must_have`. |
+| `wishlist.csv` | Her 10 items, each with a `max_price_usd` and a `must_have`. |
 | `config.json` | The price window (prices must have been shown inside it) and the model `harness.py` uses. |
 | `answer_key.csv` | The reference: qualifying offers for each item, priced in the window. See below. |
 | `kickoff.md`, `router.md`, `plan.md`, `rule.md` | The prompts your agent follows. |

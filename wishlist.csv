@@ -1,31 +1,11 @@
 item_id,item,max_price_usd,must_have
 1,carry-on suitcase,300,"fits 22 x 14 x 9 in, spinner wheels"
-2,waterproof trail running shoes,160,"women's US 8, waterproof membrane"
-3,espresso machine with a built-in grinder,700,"steam wand"
-4,over-ear noise-cancelling headphones,350,"30+ hour battery"
-5,robot vacuum and mop,500,"self-emptying base"
-6,down puffer jacket,250,"women's M, 600+ fill power"
-7,e-reader,200,"waterproof, adjustable warm light"
-8,enameled cast iron Dutch oven,150,"5 to 7 quarts"
-9,GPS running watch,400,"built-in GPS, 7+ day battery"
-10,HEPA air purifier,200,"rated for 300+ sq ft"
-11,merino wool base layer top,100,"women's M"
-12,LEGO set for a 10-year-old,80,"ages 8 to 12"
-13,portable Bluetooth speaker,150,"IP67 waterproof"
-14,electric standing desk,500,"48+ in wide"
-15,stand mixer,400,"5+ quart bowl"
-16,noise-cancelling wireless earbuds,200,"works with iPhone"
-17,yoga mat,100,"5 mm+ thick, non-slip"
-18,insulated water bottle,50,"32 oz"
-19,wireless mechanical keyboard,150,"Mac layout"
-20,air fryer,150,"6+ quarts"
-21,hiking daypack,150,"20 to 30 L, hip belt"
-22,4K streaming device,60,"Dolby Vision"
-23,weighted blanket,150,"queen, 15 to 20 lb"
-24,electric toothbrush,120,"pressure sensor"
-25,USB-C power bank,80,"20,000+ mAh, USB-C Power Delivery"
-26,women's rain jacket,200,"women's M, waterproof-breathable"
-27,instant camera,150,"prints instantly, includes film or uses widely sold film"
-28,8-inch chef's knife,150,"forged steel"
-29,20-degree sleeping bag,250,"rated 20°F or lower, under 3 lb"
-30,smart thermostat,250,"Matter support"
+2,espresso machine with a built-in grinder,700,steam wand
+3,over-ear noise-cancelling headphones,350,30+ hour battery
+4,robot vacuum and mop,500,self-emptying base
+5,down puffer jacket,250,"women's M, 600+ fill power"
+6,enameled cast iron Dutch oven,150,5 to 7 quarts
+7,GPS running watch,400,"built-in GPS, 7+ day battery"
+8,HEPA air purifier,200,rated for 300+ sq ft
+9,portable Bluetooth speaker,150,IP67 waterproof
+10,noise-cancelling wireless earbuds,200,works with iPhone

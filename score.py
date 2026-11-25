@@ -52,9 +52,12 @@ def truthy(value) -> bool:
     return str(value).strip().lower() in {"true", "yes", "1", "in stock", "y"}
 
 
-def score(path: str | Path) -> dict:
+def score(path: str | Path, n_items: int | None = None) -> dict:
+    """Score a run. n_items: how many wishlist items it was asked to shop (default: config live_items)."""
     rows = read_results(path)
-    items = {w["item_id"]: w for w in wishlist()}
+    all_items = wishlist()
+    n_items = n_items or CONFIG.get("live_items") or len(all_items)
+    items = {w["item_id"]: w for w in all_items}
     key = answer_key()
     start, end = CONFIG["window_start"], CONFIG["window_end"]
     covered, found = set(), set()
@@ -92,7 +95,7 @@ def score(path: str | Path) -> dict:
         "rows": len(rows),
         "found": len(found),
         "covered": len(covered),
-        "key_total": len(items),
+        "key_total": min(n_items, len(all_items)),
         "stale_or_undated": stale,
         "over_budget": over_budget,
         "out_of_stock": out_of_stock,
@@ -173,8 +176,9 @@ def line(s: dict) -> str:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
-    ap.add_argument("--line", action="store_true", help="one line per file, for the leaderboard")
+    ap.add_argument("--line", action="store_true", help="one line per file")
+    ap.add_argument("--items", type=int, default=None, help="wishlist items the run shopped (default: config live_items, 5)")
     args = ap.parse_args()
     for f in args.files:
-        s = score(f)
+        s = score(f, args.items)
         print(line(s)) if args.line else show(s)
