@@ -96,6 +96,26 @@ WebRouter's returned-provider subtotal does not include every losing or failed a
 unknown prices remain unknown, and its total cost is not displayed as a complete amount.
 Do not interpret cancellation as proof that a provider did not bill.
 
+## Account for provider attempts
+
+For a reproducible anonymous-provider experiment, use `--provider-profile keyless`.
+This fixes the search and extraction chains, rejects inherited provider credentials,
+and records the resolved settings. Use an environment containing only the model key
+and ordinary operating-system settings; provider endpoint overrides should be absent.
+The default `environment` profile retains normal provider discovery.
+
+Each run also writes `attempts.json`, independently of successful tool results and
+after race cleanup. It retains every observed leaf attempt, including errors and
+cancelled losers, with separate catalogue estimates, provider-reported cost/usage,
+and HTTP dispatch outcomes. Authentication is recorded as booleans; credentials and
+request URLs are not copied into this ledger. A dispatch does not prove server receipt,
+and cancellation does not prove nonbilling.
+
+Reconcile the ledger against the applicable provider terms or account usage before
+claiming a complete cost. Free anonymous access and paid production pricing are
+different comparisons. Unknown charged usage stays unknown; a catalogue estimate
+is not a receipt. Model costs remain usage-based estimates until matched to billing.
+
 ## Validate results
 
 `score.py` reports conservative exact-title/date draft-key overlap, not accuracy. Review

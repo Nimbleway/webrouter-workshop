@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import hashlib
 import importlib.metadata
 import json
+import os
 from pathlib import Path
 import subprocess
 import time
@@ -154,11 +155,29 @@ def run_webrouter(company, model, tools_obj, tool_pool, max_searches=15, max_fet
                   budget_exhausted=searches >= max_searches or fetches >= max_fetches)
 
 
-def webrouter_tools(search_provider=None, extract_provider="auto"):
+KEYLESS_CREDENTIALS = ("NIMBLE_API_KEY", "NIMBLE_API_TOKEN", "TAVILY_API_KEY", "JINA_API_KEY",
+                       "KEENABLE_API_KEY", "FIRECRAWL_API_KEY", "EXA_API_KEY", "YOU_API_KEY", "PARALLEL_API_KEY")
+
+
+def provider_settings(profile):
+    settings = {"max": {"hedge": EXTRACT_HEDGE_SECONDS}}
+    if profile == "keyless":
+        if any(os.environ.get(name) for name in KEYLESS_CREDENTIALS):
+            raise ValueError("The keyless profile requires provider credentials to be absent")
+        chain = {"search": [("nimble", {"allow_keyless": True}), ("tavily", {"allow_keyless": True}),
+                            "you-mcp", "exa-mcp", "parallel-mcp", ("keenable", {"allow_keyless": True})],
+                 "extract": [("nimble", {"allow_keyless": True}), ("tavily", {"allow_keyless": True}),
+                             "jina", ("firecrawl", {"allow_keyless": True}), ("keenable", {"allow_keyless": True})]}
+        settings["auto"] = {"chain": chain}
+        settings["max"]["chain"] = chain
+    return settings
+
+
+def webrouter_tools(search_provider=None, extract_provider="auto", provider_profile="environment"):
     from web_router import AsyncWebRouter
     from web_router.integrations.anthropic import WebRouterTools
     return WebRouterTools(
-        AsyncWebRouter(provider_config={"max": {"hedge": EXTRACT_HEDGE_SECONDS}}),
+        AsyncWebRouter(provider_config=provider_settings(provider_profile)),
         methods=("search", "extract"), max_results=5,
         provider=search_provider, extract_provider=extract_provider,
         result_chars=600, document_chars=16000, timeout=TOOL_TIMEOUT_SECONDS)
@@ -176,10 +195,15 @@ def main():
     ap.add_argument("--max-fetches", type=int, default=5)
     ap.add_argument("--search-provider", default=None)
     ap.add_argument("--extract-provider", default="auto")
+    ap.add_argument("--provider-profile", choices=["environment", "keyless"], default="environment")
     ap.add_argument("--output-dir", type=Path, default=RESULTS)
     args = ap.parse_args()
     if min(args.workers, args.tool_workers, args.limit, args.max_searches, args.max_fetches) < 1:
         ap.error("counts must be positive")
+    if args.provider_profile == "keyless" and (args.search_provider not in {None, "auto"}
+                                               or args.extract_provider not in {"auto", "max"}):
+        ap.error("the keyless profile requires auto search and auto or max extraction")
+    settings = provider_settings(args.provider_profile)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S") + "-" + uuid.uuid4().hex[:8]
     outdir = args.output_dir / run_id
     outdir.mkdir(parents=True, exist_ok=False)
@@ -198,10 +222,12 @@ def main():
     from web_router.registry import configured_providers, configured_extract_providers
     manifest['provider_environment'] = {'configured_search': list(configured_providers()),
                                         'configured_extract': list(configured_extract_providers()),
-                                        'auto_search_chain': AutoProvider().members,
-                                        'auto_extract_chain': AutoExtractProvider().members}
+                                        'credential_present': {name: bool(os.environ.get(name)) for name in KEYLESS_CREDENTIALS},
+                                        'explicit_settings': settings,
+                                        'auto_search_chain': AutoProvider(**settings.get('auto', {})).members,
+                                        'auto_extract_chain': AutoExtractProvider(**settings.get('auto', {})).members}
     (outdir / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    tools = webrouter_tools(args.search_provider, args.extract_provider) if args.web == "webrouter" else None
+    tools = webrouter_tools(args.search_provider, args.extract_provider, args.provider_profile) if args.web == "webrouter" else None
 
     def one(c):
         started = time.perf_counter()
@@ -228,15 +254,22 @@ def main():
         print(f"  {c['company']}: {out['status']}, {len(out['rows'])} records", flush=True)
         return out
 
+    run_ledger = []
     started = time.perf_counter()
-    with trace_providers(), ThreadPoolExecutor(args.tool_workers) as pool, ThreadPoolExecutor(args.workers) as workers:
-        outputs = list(workers.map(one, rows_in))
-    elapsed = round(time.perf_counter() - started, 2)
-    if tools is not None:
-        # The sync adapter owns an event loop; close its router on that same loop.
-        from web_router.routing._runner import _on_private_loop
-        _on_private_loop(tools.router.aclose()).result()
-    client.close()
+    with trace_providers(run_ledger=run_ledger):
+        try:
+            with ThreadPoolExecutor(args.tool_workers) as pool, ThreadPoolExecutor(args.workers) as workers:
+                outputs = list(workers.map(one, rows_in))
+            elapsed = round(time.perf_counter() - started, 2)
+        finally:
+            try:
+                if tools is not None:
+                    # Await race cleanup on the sync adapter's owning loop before freezing the ledger.
+                    from web_router.routing._runner import _on_private_loop
+                    _on_private_loop(tools.router.aclose()).result()
+            finally:
+                client.close()
+                (outdir / "attempts.json").write_text(json.dumps(run_ledger, indent=2))
     model_cost = sum(o.get('model_cost_usd', 0) for o in outputs)
     web_cost = sum(o.get('web_cost', 0) for o in outputs)
     complete = all(o['status'] == 'complete' for o in outputs)
