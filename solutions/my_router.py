@@ -10,7 +10,7 @@ import re
 from web_router.routing.contract import RouteDecision, RouteRequest
 from web_router.routing.rules import rules
 
-FRESH = re.compile(r"last \d+ days|this (week|month)|latest", re.I)
+FRESH = re.compile(r"last \d+ days|this (week|month)|today|latest|right now", re.I)
 
 
 def my_router(req: RouteRequest) -> RouteDecision:

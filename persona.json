@@ -1,0 +1,20 @@
+{
+  "name": "Maya",
+  "ships_to": "Brooklyn, NY 11211, USA",
+  "sizes": {
+    "shoes": "women's US 8",
+    "tops": "women's M",
+    "bedding": "queen"
+  },
+  "must": [
+    "new, in stock now and sold by the retailer itself (no third-party marketplace sellers)",
+    "price at or under the item's max_price_usd, before tax and shipping",
+    "ships to Brooklyn, NY within 7 days",
+    "free returns for at least 30 days"
+  ],
+  "prefers": [
+    "the lowest price that meets every constraint",
+    "the brand's own store or a major US retailer (REI, Best Buy, Target, Walmart, Amazon sold by Amazon, Nordstrom, Williams Sonoma, ...)"
+  ],
+  "avoids": ["refurbished or used", "bundles that need a subscription", "prices that need a membership or coupon code"]
+}

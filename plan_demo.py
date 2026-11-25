@@ -1,6 +1,7 @@
 """Ask the router for plans without running anything.
 
 Usage: uv run plan_demo.py ["your own prompt"]
+       uv run plan_demo.py --router mine     # the same prompts through your rule in my_router.py
 
 plan() decides the method, the providers in order and the reason, and calls
 nothing. Then the same prompts get a tight budget, to show what gets dropped.
@@ -8,14 +9,14 @@ nothing. Then the same prompts get a tight budget, to show what gets dropped.
 
 from __future__ import annotations
 
-import sys
+import argparse
 
 from web_router import Budget, WebRouter
 
 PROMPTS = [
-    "read https://www.figma.com/release-notes/",
-    "Figma product launches in the last 30 days",
-    "Write an in-depth report comparing Figma's product launches from the last 30 days",
+    "read https://www.lodgecastiron.com/products/6-quart-enamel-dutch-oven",
+    "carry-on suitcase deals under $300 in the last 7 days",
+    "Write an in-depth buying guide comparing espresso machines with built-in grinders under $700",
 ]
 
 
@@ -34,8 +35,17 @@ def show(router: WebRouter, prompt: str, budget: Budget | None = None) -> None:
 
 
 def main() -> None:
-    prompts = sys.argv[1:] or PROMPTS
-    with WebRouter() as router:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("prompts", nargs="*")
+    ap.add_argument("--router", choices=["default", "mine"], default="default")
+    args = ap.parse_args()
+    prompts = args.prompts or PROMPTS
+    if args.router == "mine":
+        from my_router import my_router as router_fn
+    else:
+        router_fn = "rules"
+    print(f"Router: {args.router}\n")
+    with WebRouter(router=router_fn) as router:
         print("== Plans, nothing runs ==\n")
         for p in prompts:
             show(router, p)

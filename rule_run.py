@@ -1,57 +1,31 @@
-"""Run the launch task through a router's plan, then score it.
+"""Run the wishlist search through a router's plan, and save what came back.
 
   uv run rule_run.py --router default   # WebRouter's built-in rules
   uv run rule_run.py --router mine      # your rule in my_router.py
 
-For each company: plan + run one search with the router, then turn the results
-into launch records. With ANTHROPIC_API_KEY set, one Claude call (no tools) does
-that; without it, every search result becomes a record (undated or old ones
-score as stale), so the exercise needs no key. Writes results/rule_<name>.csv and .metrics.json and
-prints the score and a leaderboard line.
+For each wishlist item: plan + run one search with the router. No API key needed.
+Writes, for your coding agent to turn into results/rule_<name>.csv:
+  results/rule_<name>.results.json   per item: the plan's reason, who served it, every result
+  results/rule_<name>.calls.jsonl    one line per search: tool, input, result_chars, cost_usd
+  results/rule_<name>.meta.json      seconds
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-import anthropic
 from web_router import WebRouter
 
-from common import CONFIG, RESULTS, companies, llm_cost, parse_json_array, task_prompt, write_results
-from score import line, score, show
-
-client = anthropic.Anthropic() if os.environ.get("ANTHROPIC_API_KEY") else None
-
-
-def from_results(results) -> list[dict]:
-    """No-key mode: each search result is one record; undated or old ones score as stale."""
-    return [{"announcement": r.title, "event_date": str(r.published_date or "")[:10],
-             "evidence": (r.description or r.content or "")[:200].replace("\n", " "),
-             "source_url": r.url} for r in results]
-
-
-def structure(company: str, results_text: str, model: str) -> tuple[list[dict], int, int]:
-    r = client.beta.messages.create(
-        model=model,
-        max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
-        messages=[{"role": "user", "content": task_prompt(company) +
-                   "\n\nDon't search: use only these search results.\n\n" + results_text}],
-    )
-    text = "".join(b.text for b in r.content if b.type == "text")
-    return parse_json_array(text), r.usage.input_tokens, r.usage.output_tokens
+from common import RESULTS, wishlist
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--router", choices=["default", "mine"], required=True)
-    ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--model", default=CONFIG["model"])
+    ap.add_argument("--limit", type=int, default=None, help="only the first N items")
     args = ap.parse_args()
 
     if args.router == "mine":
@@ -59,53 +33,53 @@ def main() -> None:
     else:
         router_fn = "rules"
 
-    rows_in = companies()[: args.limit]
-    web_cost = 0.0
-    tok = [0, 0]
-
+    rows_in = wishlist()[: args.limit]
     with WebRouter(router=router_fn) as router:
-        def one(c: dict) -> list[dict]:
-            nonlocal web_cost
-            prompt = f"{c['company']} product launches in the last 30 days"
+
+        def one(c: dict) -> dict:
+            prompt = f"{c['item']} ({c['must_have']}) deals under ${c['max_price_usd']} in the last 7 days"
             plan = router.plan(prompt)
             res = router.run(plan)
-            web_cost += res.cost_usd or 0
-            text = "\n\n".join(
-                f"{r.title}\n{r.url}\npublished: {r.published_date or 'unknown'}\n{(r.content or r.description or '')[:1500]}"
+            results = [
+                {
+                    "title": r.title,
+                    "url": r.url,
+                    "published_date": str(r.published_date)[:10] if r.published_date else None,
+                    "text": (r.content or r.description or "")[:1500],
+                }
                 for r in res.results
-            )
-            if client is None:
-                rows, i, o = from_results(res.results), 0, 0
-            else:
-                rows, i, o = structure(c["company"], text, args.model)
-            tok[0] += i
-            tok[1] += o
-            for r in rows:
-                r["company"] = c["company"]
-            reason = plan.decision.reason if plan.decision else ""
-            print(f"  {c['company']}: {res.provider}, {len(rows)} launches  ({reason})")
-            return rows
+            ]
+            reason = plan.decision.reason if plan.decision else None
+            print(f"  #{c['item_id']} {c['item']}: {res.provider}, {len(results)} results  ({reason})")
+            return {
+                "item_id": c["item_id"],
+                "item": c["item"],
+                "max_price_usd": c["max_price_usd"],
+                "must_have": c["must_have"],
+                "prompt": prompt,
+                "reason": reason,
+                "provider": res.provider,
+                "cost_usd": res.cost_usd,
+                "results": results,
+            }
 
-        print(f"Running {len(rows_in)} companies with the {args.router} router ...")
+        print(f"Searching {len(rows_in)} wishlist items with the {args.router} router ...")
         t0 = time.time()
         with ThreadPoolExecutor(6) as pool:
-            out = [r for rows in pool.map(one, rows_in) for r in rows]
+            out = list(pool.map(one, rows_in))
         seconds = round(time.time() - t0, 1)
 
-    path = RESULTS / f"rule_{args.router}.csv"
-    write_results(path, out)
-    path.with_suffix(".metrics.json").write_text(json.dumps({
-        "seconds": seconds,
-        "input_tokens": tok[0],
-        "output_tokens": tok[1],
-        "web_calls": len(rows_in),
-        "cost_usd": round(llm_cost(args.model, *tok) + web_cost, 4),
-        "web_cost_usd": round(web_cost, 4),
-        "model": args.model,
-    }, indent=2))
-    s = score(path)
-    show(s)
-    print("\nLeaderboard line:\n  " + line(s))
+    base = RESULTS / f"rule_{args.router}"
+    base.with_suffix(".results.json").write_text(json.dumps(out, indent=2))
+    with open(base.with_suffix(".calls.jsonl"), "w") as f:
+        for o in out:
+            f.write(json.dumps({"tool": "search", "input": o["prompt"],
+                                "result_chars": len(json.dumps(o["results"])), "cost_usd": o["cost_usd"]}) + "\n")
+    base.with_suffix(".meta.json").write_text(json.dumps({"seconds": seconds, "router": args.router}))
+    dated = sum(1 for o in out for r in o["results"] if r["published_date"])
+    total = sum(len(o["results"]) for o in out)
+    print(f"\nSaved {total} results ({dated} with a publish date) to results/{base.name}.results.json")
+    print(f"Next: turn them into results/{base.name}.csv (qualifying offers only), then: uv run score.py results/{base.name}.csv")
 
 
 if __name__ == "__main__":

@@ -8,5 +8,10 @@ dependencies = [
     "webrouter[search,extract]==0.14.0",
 ]
 
+# Only for organizers/tests (the budgeted-MCP check); attendees never install it:
+#   uv run --group organizers python -m unittest discover -s organizers/tests
+[dependency-groups]
+organizers = ["webrouter[mcp]==0.14.0"]
+
 [tool.uv]
 package = false

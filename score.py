@@ -1,21 +1,28 @@
-"""Score a results CSV against the answer key.
+"""Score a results CSV against the shopper's wishlist and the answer key.
 
 Usage: uv run score.py results/baseline.csv [--line]
 
-Columns expected: company, announcement, event_date, evidence, source_url.
+Columns expected: item_id, product, retailer, price_usd, in_stock, evidence, source_url, seen_date.
 If results/<name>.metrics.json exists (written by harness.py or rule_run.py),
 its time, tokens and cost are shown too.
+
+An offer counts when it is in budget, in stock, priced inside the window in
+config.json and backed by evidence and a URL. An item is "found" when it has a
+counted offer for a product the answer key also lists for that item.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from common import CONFIG, answer_key, read_results
+from common import CONFIG, FIELDS, answer_key, read_results, wishlist
+
+STOP = {"the", "a", "and", "for", "with", "in", "of", "women", "womens", "s", "new", "by", "x"}
 
 
 def norm_url(url: str) -> str:
@@ -24,47 +31,109 @@ def norm_url(url: str) -> str:
     return url.rstrip("/")
 
 
-def similar(a: str, b: str) -> bool:
-    a, b = a.lower(), b.lower()
-    if SequenceMatcher(None, a, b).ratio() >= 0.6:
+def words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", (text or "").lower())) - STOP
+
+
+def same_product(a: str, b: str) -> bool:
+    """Loose product match: "Sony WH-1000XM6" matches "Sony WH-1000XM6 Wireless Headphones, Black"."""
+    if SequenceMatcher(None, a.lower(), b.lower()).ratio() >= 0.7:
         return True
-    wa, wb = set(re.findall(r"[a-z0-9]+", a)), set(re.findall(r"[a-z0-9]+", b))
-    wa, wb = wa - {"the", "a", "and", "for", "is", "now", "new", "of", "to", "with", "in"}, wb
-    return bool(wa) and len(wa & wb) / len(wa) >= 0.6
+    wa, wb = words(a), words(b)
+    small = min(len(wa), len(wb))
+    return small >= 2 and len(wa & wb) / small >= 0.75
 
 
-def score(path: str | Path) -> dict:
+def price(value) -> float | None:
+    m = re.search(r"\d[\d,]*(\.\d+)?", str(value or ""))
+    return float(m.group(0).replace(",", "")) if m else None
+
+
+def truthy(value) -> bool:
+    return str(value).strip().lower() in {"true", "yes", "1", "in stock", "y"}
+
+
+def record_id(row: dict) -> str:
+    """A stable id for one result row, used to attach a reviewer's label to it."""
+    payload = [str(row.get(k, "")).strip() for k in FIELDS]
+    return hashlib.sha256(json.dumps(payload, ensure_ascii=False).encode()).hexdigest()[:20]
+
+
+def reviewed(rows: list[dict], review: dict) -> dict:
+    """Counts from an optional <run>.review.json: offers a person checked against the source page.
+
+    {"records": [{"record_id": "...", "status": "valid|invalid|duplicate|unresolved",
+                  "event_id": "item-1-brand-model", "verified_source": "https://..."}]}
+    Rows without a label stay unresolved, a valid label needs an event_id and a verified_source,
+    and a repeated valid event_id counts once. Precision is reported only when every row is reviewed.
+    """
+    labels = {r["record_id"]: r for r in review.get("records", [])}
+    counts = dict.fromkeys(("valid", "invalid", "duplicate", "unresolved"), 0)
+    seen = set()
+    for row in rows:
+        label = labels.get(record_id(row), {})
+        status = label.get("status", "unresolved")
+        event = label.get("event_id")
+        if status not in counts or (status == "valid" and (not event or not label.get("verified_source"))):
+            status = "unresolved"
+        if status == "valid" and event in seen:
+            status = "duplicate"
+        if status == "valid":
+            seen.add(event)
+        counts[status] += 1
+    counts["precision"] = round(counts["valid"] / len(rows), 3) if rows and not counts["unresolved"] else None
+    return counts
+
+
+def score(path: str | Path, n_items: int | None = None) -> dict:
+    """Score a run. n_items: how many wishlist items it was asked to shop (default: config live_items)."""
     rows = read_results(path)
+    all_items = wishlist()
+    n_items = n_items or CONFIG.get("live_items") or len(all_items)
+    items = {w["item_id"]: w for w in all_items}
     key = answer_key()
     start, end = CONFIG["window_start"], CONFIG["window_end"]
-    matched_keys, stale, unsupported, unverified = set(), 0, 0, 0
+    covered, found = set(), set()
+    stale = over_budget = out_of_stock = unsupported = not_in_key = 0
     for r in rows:
-        date = (r.get("event_date") or "").strip()[:10]
+        item = items.get(str(r.get("item_id", "")).strip())
+        cost = price(r.get("price_usd"))
+        date = (r.get("seen_date") or "").strip()[:10]
+        ok = item is not None
         if not date or not (start <= date <= end):
             stale += 1
+            ok = False
+        if item is None or cost is None or cost > float(item["max_price_usd"]):
+            over_budget += 1
+            ok = False
+        if not truthy(r.get("in_stock")):
+            out_of_stock += 1
+            ok = False
         if not (r.get("evidence") or "").strip() or not (r.get("source_url") or "").strip():
             unsupported += 1
-        hit = None
-        for i, k in enumerate(key):
-            if k["company"].lower() != (r.get("company") or "").lower():
-                continue
-            if norm_url(k["source_url"]) == norm_url(r.get("source_url", "")) or similar(
-                k["announcement"], r.get("announcement", "")
-            ):
-                hit = i
-                break
-        if hit is None:
-            unverified += 1
-        else:
-            matched_keys.add(hit)
+            ok = False
+        in_key = item is not None and any(
+            k["item_id"] == item["item_id"]
+            and (norm_url(k["source_url"]) == norm_url(r.get("source_url", "")) or same_product(k["product"], r.get("product", "")))
+            for k in key
+        )
+        if not in_key:
+            not_in_key += 1
+        if ok:
+            covered.add(item["item_id"])
+            if in_key:
+                found.add(item["item_id"])
     out = {
         "file": str(path),
         "rows": len(rows),
-        "found": len(matched_keys),
-        "key_total": len(key),
+        "found": len(found),
+        "covered": len(covered),
+        "key_total": min(n_items, len(all_items)),
         "stale_or_undated": stale,
+        "over_budget": over_budget,
+        "out_of_stock": out_of_stock,
         "unsupported": unsupported,
-        "not_in_key": unverified,
+        "not_in_key": not_in_key,
     }
     metrics = Path(path).with_suffix(".metrics.json")
     meta = Path(path).with_suffix(".meta.json")
@@ -75,6 +144,9 @@ def score(path: str | Path) -> dict:
         out.update(json.loads(meta.read_text()))
     if calls.exists():
         out.update(estimate(calls))
+    review = Path(path).with_suffix(".review.json")
+    if review.exists():
+        out.update(reviewed(rows, json.loads(review.read_text())))
     return out
 
 
@@ -89,7 +161,7 @@ def estimate(calls_path: Path) -> dict:
     """
     from common import CONFIG, WEB_TOOL_PRICES, llm_cost
 
-    n = chars = 0
+    n = chars = unknown = 0
     web_cost = 0.0
     for raw in calls_path.read_text().splitlines():
         if not raw.strip():
@@ -98,28 +170,40 @@ def estimate(calls_path: Path) -> dict:
         n += 1
         chars += int(c.get("result_chars") or 0) + len(str(c.get("input") or ""))
         reported = c.get("cost_usd")
-        web_cost += float(reported) if reported is not None else WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower(), 0.0)
+        listed = WEB_TOOL_PRICES.get(str(c.get("tool", "")).lower())
+        if reported is None and listed is None:
+            unknown += 1  # no reported cost and no list price: counted as $0 below, and flagged
+        web_cost += float(reported) if reported is not None else (listed or 0.0)
     tokens = chars // 4
     return {
         "tool_calls": n,
         "est_tool_tokens": tokens,
         "est_web_cost_usd": round(web_cost, 4),
         "est_cost_usd": round(web_cost + llm_cost(CONFIG["model"], tokens, 0), 4),
+        "unknown_cost_calls": unknown,
     }
 
 
 def show(s: dict) -> None:
     print(f"\n{s['file']}")
-    print(f"  launches found     {s['found']} / {s['key_total']} in the answer key")
-    print(f"  rows returned      {s['rows']}")
-    print(f"  stale or undated   {s['stale_or_undated']}")
+    print(f"  items found        {s['found']} / {s['key_total']}  (a valid offer for a product the answer key lists)")
+    print(f"  items covered      {s['covered']} / {s['key_total']}  (any valid offer: in budget, in stock, fresh, sourced)")
+    print(f"  offers returned    {s['rows']}")
+    print(f"  stale or undated   {s['stale_or_undated']}  (price not seen {CONFIG['window_start']} to {CONFIG['window_end']})")
+    print(f"  over budget        {s['over_budget']}")
+    print(f"  not in stock       {s['out_of_stock']}")
     print(f"  no evidence / URL  {s['unsupported']}")
-    print(f"  not in answer key  {s['not_in_key']}  (check these by hand: the key is a draft)")
-    for k, label in [("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
+    print(f"  not in answer key  {s['not_in_key']}  (check these by hand: the key is a reference, not the only answer)")
+    for k, label in [("valid", "reviewed valid"), ("invalid", "reviewed invalid"), ("duplicate", "reviewed duplicate"),
+                     ("unresolved", "not yet reviewed"), ("precision", "reviewed precision"),
+                     ("tool_calls", "web tool calls"), ("est_tool_tokens", "est. tool tokens"),
                      ("est_cost_usd", "est. cost (US$)"), ("seconds", "time (s)"), ("input_tokens", "input tokens"), ("output_tokens", "output tokens"),
-                     ("web_calls", "web calls"), ("cost_usd", "cost (US$)")]:
+                     ("web_calls", "web calls"), ("model_cost_usd", "model est. (US$)"),
+                     ("provider_returned_estimate_usd", "provider est. (US$)"), ("cost_usd", "cost (US$)")]:
         if k in s:
-            print(f"  {label:<18} {s[k]}")
+            print(f"  {label:<18} {'unknown' if s[k] is None else s[k]}")
+    if s.get("unknown_cost_calls"):
+        print(f"  unpriced calls     {s['unknown_cost_calls']}  (no cost reported: counted as $0, so the cost is a floor)")
 
 
 def line(s: dict) -> str:
@@ -130,14 +214,16 @@ def line(s: dict) -> str:
         per_cent = "free (keyless backends)"
     else:
         per_cent = f"{s['found'] / (cost * 100):.1f} found per cent"
-    return f"{Path(s['file']).stem}: {s['found']}/{s['key_total']} found, {s['stale_or_undated']} stale, {per_cent}"
+    return (f"{Path(s['file']).stem}: {s['found']}/{s['key_total']} found, {s['covered']} covered, "
+            f"{s['stale_or_undated']} stale, {s['over_budget']} over budget, {per_cent}")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+")
-    ap.add_argument("--line", action="store_true", help="one line per file, for the leaderboard")
+    ap.add_argument("--line", action="store_true", help="one line per file")
+    ap.add_argument("--items", type=int, default=None, help="wishlist items the run shopped (default: config live_items, 5)")
     args = ap.parse_args()
     for f in args.files:
-        s = score(f)
+        s = score(f, args.items)
         print(line(s)) if args.line else show(s)

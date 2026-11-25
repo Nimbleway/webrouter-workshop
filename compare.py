@@ -14,7 +14,9 @@ from score import score
 
 COLUMNS = [
     ("found", "found"),
+    ("covered", "covered"),
     ("stale_or_undated", "stale"),
+    ("over_budget", "over $"),
     ("unsupported", "no source"),
     ("seconds", "time s"),
     ("tool_calls", "web calls"),
@@ -37,13 +39,14 @@ def main() -> None:
         cells = []
         for key, _ in COLUMNS:
             v = s.get(key, s.get(MEASURED.get(key, ""), "-"))
-            if key == "found":
-                v = f"{s['found']}/{s['key_total']}"
+            v = "-" if v is None else v
+            if key in ("found", "covered"):
+                v = f"{s[key]}/{s['key_total']}"
             cells.append(str(v).rjust(11))
         print(f.stem.ljust(name_w) + "".join(cells))
     print("\nFor your agent's runs, tokens and cost are estimates from its log of web tool calls")
     print("(results/<run>.calls.jsonl): ~4 characters per token, list prices per call.")
-    print("Runs from harness.py and rule_run.py are measured. '-' means not measured.")
+    print("Runs from organizers/harness.py are measured (pass their CSV paths). '-' means not measured or unknown.")
 
 
 if __name__ == "__main__":

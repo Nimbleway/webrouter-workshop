@@ -1,4 +1,5 @@
-"""Your routing rule. Edit my_router(), then: uv run rule_run.py --router mine
+"""Your routing rule. Edit my_router(), then: uv run plan_demo.py --router mine
+(take-home, to search with it: uv run rule_run.py --router mine)
 
 A router sees each prompt and decides, before anything runs:
   - tools:     which method to use ("search", "extract", "research", ...)
@@ -8,8 +9,9 @@ It can't change options like the date filter: those stay in the caller's hands,
 so a call never runs looser than you asked.
 
 The default rules only look for a URL or the word "report". Teach yours about
-freshness: when a prompt asks for "the last N days", send the search to
-providers that handle dates well, first. Results from providers.py are a good
+freshness: a price from last month's roundup is a wrong price. When a prompt
+asks for "the last N days" or "this week", send the search to providers that
+handle dates well, first. Results from providers.py are a good
 hint for which ones.
 """
 
@@ -20,7 +22,7 @@ import re
 from web_router.routing.contract import RouteDecision, RouteRequest
 from web_router.routing.rules import rules
 
-FRESH = re.compile(r"last \d+ days|this (week|month)|latest", re.I)
+FRESH = re.compile(r"last \d+ days|this (week|month)|today|latest|right now", re.I)
 
 
 def my_router(req: RouteRequest) -> RouteDecision:
