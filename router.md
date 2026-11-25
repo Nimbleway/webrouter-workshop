@@ -14,7 +14,12 @@ You're helping in a workshop. Work through these steps without asking questions.
    (`search`, `extract`), not your built-in web tools. Search and extract need no API keys.
    Keep the same official-domain-first queries and parallelism as the baseline.
    Use `max_results=5` for the initial search and pass independent URLs together to
-   `extract`. Keep the default provider for the first comparison. The task has a fixed
+   `extract`. Keep the default search provider. For extraction, use `provider="max"`
+   to race available extractors instead of waiting for sequential provider fallback.
+   This can start extra billable fetches: keep the shared budget active and record
+   the reported cost. Keep failed URLs explicit; don't count them as read pages.
+   The Python harness delays its alternative extractors by two seconds; MCP's `max`
+   races them immediately. The task has a fixed
    date window: put those dates in the query and verify event dates from evidence,
    rather than using a relative `recency` filter.
    Start the task timer after installation, restart and budget setup; stop it after

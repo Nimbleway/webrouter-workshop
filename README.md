@@ -47,7 +47,7 @@ Then, when the speaker gets there, paste each of these in the same agent:
 | `plan_demo.py` | WebRouter's plans for a few prompts, with and without a tight budget. |
 | `my_router.py` | Your routing rule (step 4). `solutions/my_router.py` has one answer. |
 | `rule_run.py` | Runs the task through a router's plan and scores it. |
-| `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools, measuring exact tokens and cost. |
+| `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools, measuring API tokens and estimating cost. |
 | `build_answer_key.py` | For organizers: rebuilds the draft answer key (needs `EXA_API_KEY`). |
 
 ## Check the runtime comparison
@@ -61,12 +61,26 @@ uv run compare.py
 ```
 
 The harness runs independent WebRouter calls from each model turn concurrently, with
-at most six tool calls in flight across all companies. Use `--tool-workers 1` to run
-the tool calls serially, or `--search-provider <name>` to test a specific search backend.
+at most six tool calls in flight across all companies. Its `AsyncWebRouter` also fetches
+the URLs inside each extraction batch concurrently. Using a synchronous router here
+would fetch those URLs one at a time even when tool calls run in parallel.
+Extraction uses `max` with a two-second hedge: the normal first backend gets two
+seconds alone, then alternatives start if it is still pending. The first complete
+batch wins; if only partial results are available, failed URLs stay explicit.
+Each tool call has a 20-second deadline, so a stalled fetch cannot hold a turn for
+the previous 60-second limit. These failures are returned to the agent, not counted
+as successful pages. A hedge may start extra billable fetches, so compare cost too.
+Use `--tool-workers 1` to run the tool calls serially, `--search-provider <name>` to test
+a specific search backend, or `--extract-provider auto` to compare against sequential
+provider fallback (URL batches still run asynchronously).
 Each rerun overwrites that mode's results, so save them before changing settings.
+Both modes enable automatic five-minute prompt caching. Metrics retain total input
+tokens and separate uncached input, cache writes and cache reads; the cost estimate
+uses their different rates from [Anthropic's pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
 WebRouter runs also write `results/harness_webrouter.trace.jsonl`: the company, tool,
-provider, duration, response size and error flag for every completed tool call.
+provider, duration, response size and error flag for every completed tool call, plus
+the requested URL count and successful/failed document counts for extraction calls.
 Use this alongside the CSV score and metrics to check runtime without losing track of
 result quality. A five-company run is a quick check, not the full 30-company benchmark.
 

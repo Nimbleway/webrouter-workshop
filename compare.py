@@ -43,7 +43,7 @@ def main() -> None:
         print(f.stem.ljust(name_w) + "".join(cells))
     print("\nFor your agent's runs, tokens and cost are estimates from its log of web tool calls")
     print("(results/<run>.calls.jsonl): ~4 characters per token, list prices per call.")
-    print("Runs from harness.py and rule_run.py are measured. '-' means not measured.")
+    print("API runs report measured tokens and list-price cost estimates. '-' means not measured.")
 
 
 if __name__ == "__main__":

@@ -83,6 +83,8 @@ def parse_json_array(text: str) -> list[dict]:
     return [d for d in data if isinstance(d, dict)]
 
 
-def llm_cost(model: str, usage_in: int, usage_out: int) -> float:
+def llm_cost(model: str, usage_in: int, usage_out: int, *, cache_read: int = 0, cache_write: int = 0) -> float:
     price_in, price_out = MODEL_PRICES.get(model, MODEL_PRICES["claude-opus-5-5"])
-    return usage_in / 1e6 * price_in + usage_out / 1e6 * price_out
+    read_multiplier = 0.05 if model in {"claude-opus-5-5", "claude-sonnet-5-5"} else 0.1
+    return ((usage_in + 1.25 * cache_write + read_multiplier * cache_read) * price_in
+            + usage_out * price_out) / 1e6

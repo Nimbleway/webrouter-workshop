@@ -10,6 +10,7 @@ def execute_batch(tools, uses: list, pool: Executor) -> tuple[list, float, list]
         started = time.perf_counter()
         result = tools.call(use.name, use.input)
         response = result.response
+        urls = use.input.get("urls") if isinstance(use.input, dict) else None
         trace = {
             "tool": use.name,
             "tool_use_id": use.id,
@@ -17,6 +18,10 @@ def execute_batch(tools, uses: list, pool: Executor) -> tuple[list, float, list]
             "provider": getattr(response, "provider", None),
             "result_chars": len(result.content),
             "is_error": result.is_error,
+            "requested_urls": len(urls) if isinstance(urls, list) else 0,
+            "documents": len(getattr(response, "documents", [])),
+            "failed_urls": (len(getattr(response, "failures", [])) if response is not None
+                            else len(urls) if result.is_error and isinstance(urls, list) else 0),
         }
         return use, result, trace
 
