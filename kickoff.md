@@ -7,6 +7,11 @@ You're helping in a workshop. Work through these steps without asking questions.
 3. For each company, use **only your built-in web search and web fetch tools** (install nothing,
    use no other web tools) to find the product launches the company announced inside the window.
    A launch is a new product, feature or release the company itself announced.
+   Start each company on its official domain from `companies.csv` (use `site:<domain>`
+   in the search query); broaden only if that leaves gaps. Issue independent searches
+   together when your agent supports parallel tool calls, up to six at a time.
+   Read independent source URLs in a batch where supported. Extract a page when search
+   evidence does not establish the announcement, date or supporting quotation.
 4. **Log every web tool call** you make, one JSON line per call, appended to
    `results/baseline.calls.jsonl`:
    `{"tool": "<tool name, e.g. WebSearch or WebFetch>", "input": "<query or URL>", "result_chars": <approximate length of what the tool returned, in characters>}`

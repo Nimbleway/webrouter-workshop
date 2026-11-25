@@ -19,6 +19,7 @@ import anthropic
 
 from common import CONFIG, NATIVE_SEARCH_USD, RESULTS, companies, llm_cost, parse_json_array, task_prompt, write_results
 from score import score, show
+from tool_batch import execute_batch
 
 client = anthropic.Anthropic()
 BETAS = ["server-side-fallback-2026-07-01"]
@@ -54,11 +55,12 @@ def run_native(company: str, model: str) -> dict:
             "web_cost": searches * NATIVE_SEARCH_USD, "stop": r.stop_reason}
 
 
-def run_webrouter(company: str, model: str, tools_obj) -> dict:
+def run_webrouter(company: str, model: str, tools_obj, tool_pool) -> dict:
     tools = tools_obj.definitions()
     messages = [{"role": "user", "content": task_prompt(company)}]
     tok_in = tok_out = calls = 0
     web_cost = 0.0
+    trace = []
     while True:
         r = ask(model, messages, tools)
         tok_in += r.usage.input_tokens + (r.usage.cache_read_input_tokens or 0) + (r.usage.cache_creation_input_tokens or 0)
@@ -67,17 +69,14 @@ def run_webrouter(company: str, model: str, tools_obj) -> dict:
         if r.stop_reason != "tool_use" or not uses:
             break
         messages.append({"role": "assistant", "content": r.content})
-        results = []
-        for u in uses:
-            res = tools_obj.call(u.name, u.input)
-            calls += 1
-            if res.response is not None and getattr(res.response, "cost_usd", None):
-                web_cost += res.response.cost_usd
-            results.append({"type": "tool_result", "tool_use_id": u.id, "content": res.content, "is_error": res.is_error})
+        results, batch_cost, batch_trace = execute_batch(tools_obj, uses, tool_pool)
+        calls += len(uses)
+        web_cost += batch_cost
+        trace.extend({"company": company, **row} for row in batch_trace)
         messages.append({"role": "user", "content": results})
     text = "".join(b.text for b in r.content if b.type == "text")
     return {"rows": parse_json_array(text), "in": tok_in, "out": tok_out, "web_calls": calls,
-            "web_cost": web_cost, "stop": r.stop_reason}
+            "web_cost": web_cost, "stop": r.stop_reason, "trace": trace}
 
 
 def main() -> None:
@@ -86,7 +85,11 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=None, help="only the first N companies")
     ap.add_argument("--model", default=CONFIG["model"])
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--tool-workers", type=int, default=6, help="maximum concurrent WebRouter calls across companies")
+    ap.add_argument("--search-provider", default=None, help="explicit search backend, e.g. exa-mcp; default: auto")
     args = ap.parse_args()
+    if args.workers < 1 or args.tool_workers < 1:
+        ap.error("worker counts must be positive")
 
     rows_in = companies()[: args.limit]
     tools_obj = None
@@ -94,13 +97,13 @@ def main() -> None:
         from web_router import WebRouter
         from web_router.integrations.anthropic import WebRouterTools
 
-        # Constrain before you search: a recency window, and capped page text so a
-        # single extract can't flood the model's context.
+        # The prompt has a fixed historical window; relative recency would exclude
+        # more of that window each day the workshop is run.
         tools_obj = WebRouterTools(
             WebRouter(),
             methods=("search", "extract"),
             max_results=5,
-            recency="month",
+            provider=args.search_provider,
             result_chars=600,
             document_chars=4000,
         )
@@ -110,7 +113,7 @@ def main() -> None:
             if args.web == "native":
                 out = run_native(c["company"], args.model)
             else:
-                out = run_webrouter(c["company"], args.model, tools_obj)
+                out = run_webrouter(c["company"], args.model, tools_obj, tool_pool)
         except anthropic.APIError as e:
             print(f"  {c['company']}: API error, skipped ({e.__class__.__name__})")
             return {"rows": [], "in": 0, "out": 0, "web_calls": 0, "web_cost": 0.0}
@@ -121,7 +124,7 @@ def main() -> None:
 
     print(f"Running {len(rows_in)} companies with {args.web} web tools on {args.model} ...")
     t0 = time.time()
-    with ThreadPoolExecutor(args.workers) as pool:
+    with ThreadPoolExecutor(args.tool_workers) as tool_pool, ThreadPoolExecutor(args.workers) as pool:
         outs = list(pool.map(one, rows_in))
     seconds = round(time.time() - t0, 1)
 
@@ -136,10 +139,16 @@ def main() -> None:
         "cost_usd": round(llm_cost(args.model, tok_in, tok_out) + web_cost, 4),
         "web_cost_usd": round(web_cost, 4),
         "model": args.model,
+        "search_provider": args.search_provider or "auto",
+        "tool_workers": args.tool_workers,
     }
     path = RESULTS / f"harness_{args.web}.csv"
     write_results(path, [r for o in outs for r in o["rows"]])
     path.with_suffix(".metrics.json").write_text(json.dumps(metrics, indent=2))
+    if args.web == "webrouter":
+        path.with_suffix(".trace.jsonl").write_text("".join(
+            json.dumps(row) + "\n" for out in outs for row in out.get("trace", [])
+        ))
     show(score(path))
 
 

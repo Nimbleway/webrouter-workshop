@@ -34,7 +34,8 @@ WEB_TOOL_PRICES = {
 
 
 def companies() -> list[dict]:
-    return list(csv.DictReader(open(ROOT / "companies.csv")))
+    with open(ROOT / "companies.csv") as source:
+        return list(csv.DictReader(source))
 
 
 def answer_key() -> list[dict]:
@@ -53,10 +54,18 @@ def write_results(path: str | Path, rows: list[dict]) -> None:
 
 
 def task_prompt(company: str) -> str:
+    domain = next((row["domain"] for row in companies() if row["company"] == company), None)
+    source_hint = (
+        f"Start with the company's official site, {domain}: search site:{domain} for its product announcements "
+        "in that date window. Broaden only if the official site leaves gaps. "
+        if domain else ""
+    )
     return (
         f"Find every product launch {company} announced between {CONFIG['window_start']} and "
         f"{CONFIG['window_end']} (inclusive). A launch is a new product, feature or release the "
-        "company itself announced. Use your web tools, then reply with only a JSON array, no prose: "
+        "company itself announced. "
+        + source_hint
+        + "Use your web tools, then reply with only a JSON array, no prose: "
         '[{"announcement": "...", "event_date": "YYYY-MM-DD", "evidence": "one short sentence from '
         'the source", "source_url": "https://..."}]. Use the date the company announced it, not the '
         "date you found it. Return [] if there were none."

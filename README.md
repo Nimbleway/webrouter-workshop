@@ -50,6 +50,28 @@ Then, when the speaker gets there, paste each of these in the same agent:
 | `harness.py` | Optional, needs `ANTHROPIC_API_KEY`: runs the task through Claude with its built-in web search or with WebRouter's tools, measuring exact tokens and cost. |
 | `build_answer_key.py` | For organizers: rebuilds the draft answer key (needs `EXA_API_KEY`). |
 
+## Check the runtime comparison
+
+With `ANTHROPIC_API_KEY` set in your environment, start with the same five companies:
+
+```bash
+uv run harness.py --web native --limit 5
+uv run harness.py --web webrouter --limit 5
+uv run compare.py
+```
+
+The harness runs independent WebRouter calls from each model turn concurrently, with
+at most six tool calls in flight across all companies. Use `--tool-workers 1` to run
+the tool calls serially, or `--search-provider <name>` to test a specific search backend.
+Each rerun overwrites that mode's results, so save them before changing settings.
+
+WebRouter runs also write `results/harness_webrouter.trace.jsonl`: the company, tool,
+provider, duration, response size and error flag for every completed tool call.
+Use this alongside the CSV score and metrics to check runtime without losing track of
+result quality. A five-company run is a quick check, not the full 30-company benchmark.
+
+Run the offline concurrency tests with `uv run python -m unittest -v test_tool_batch.py`.
+
 ## About the answer key
 
 `answer_key.csv` was built automatically from each company's own site for the window in
